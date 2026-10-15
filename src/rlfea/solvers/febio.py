@@ -54,7 +54,24 @@ def febio_version(exe: str | None = None) -> dict:
         log = open(os.path.join(d, "v.log"), errors="replace").read() if os.path.exists(os.path.join(d, "v.log")) else ""
     m = re.search(r"[Vv]ersion\s+([0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9a-f]+)?)", log + p.stdout)
     return {"available": True, "executable": os.path.realpath(exe), "version": m.group(1) if m else None,
-            "smoke_test_normal_termination": "N O R M A L   T E R M I N A T I O N" in log}
+            "smoke_test_normal_termination": "N O R M A L   T E R M I N A T I O N" in log,
+            "binary_sha256": _binary_hashes(exe)}
+
+
+def _binary_hashes(exe: str) -> dict:
+    """sha256 of the FEBio executable and core libraries, so that a patched
+    build (scripts/patches) is distinguishable from an unpatched one."""
+    import hashlib
+    real = os.path.realpath(exe)
+    root = os.path.dirname(os.path.dirname(real))
+    out = {}
+    cands = [real, os.path.join(os.path.dirname(real), "febio4.bin")] + \
+        [os.path.join(root, "lib", n) for n in ("libfecore.so", "libfebiomech.so", "libfebiolib.so")]
+    for f in cands:
+        if os.path.isfile(f) and os.path.basename(f) not in out:
+            with open(f, "rb") as fh:
+                out[os.path.basename(f)] = hashlib.sha256(fh.read()).hexdigest()
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -378,6 +395,45 @@ def _rigid_bc(parent, r):
 
 
 # ---------------------------------------------------------------------------
+# Restart
+# ---------------------------------------------------------------------------
+RESTART_SOLVER_KEYS = {"etol", "dtol", "rtol", "lstol", "max_refs", "diverge_reform", "reform_each_time_step"}
+RESTART_STEPPER_KEYS = {"max_retries", "dtmin", "opt_iter"}
+RESTART_CONTROL_KEYS = {"step_size"}   # final_time/time_steps cannot extend a step on restart (m_tend is not recomputed)
+
+
+def write_restart(path: str, dump_file: str, solver: dict | None = None, stepper: dict | None = None,
+                  control: dict | None = None) -> str:
+    """Write an FEBio 4 restart file (febio_restart version 4.0) that resumes
+    from `dump_file` (written at the last converged time step) with optional
+    control overrides.  Accepted tags follow FERestartControlSection
+    (FEBio 4.13 FEBioXML/FERestartImport.cpp).  Every override is part of the
+    run record; nothing is changed silently."""
+    solver, stepper, control = solver or {}, stepper or {}, control or {}
+    bad = (set(solver) - RESTART_SOLVER_KEYS) | (set(stepper) - RESTART_STEPPER_KEYS) | (set(control) - RESTART_CONTROL_KEYS)
+    if bad:
+        raise ValueError(f"unsupported restart override(s): {sorted(bad)}")
+    lines = ['<?xml version="1.0" encoding="ISO-8859-1"?>', '<febio_restart version="4.0">',
+             f"\t<Archive>{os.path.basename(dump_file)}</Archive>"]
+    if solver or stepper or control:
+        lines.append("\t<Control>")
+        lines += [f"\t\t<{k}>{v}</{k}>" for k, v in control.items()]
+        if stepper:
+            lines.append("\t\t<time_stepper>")
+            lines += [f"\t\t\t<{k}>{v}</{k}>" for k, v in stepper.items()]
+            lines.append("\t\t</time_stepper>")
+        if solver:
+            lines.append("\t\t<solver>")
+            lines += [f"\t\t\t<{k}>{v}</{k}>" for k, v in solver.items()]
+            lines.append("\t\t</solver>")
+        lines.append("\t</Control>")
+    lines.append("</febio_restart>")
+    with open(path, "w") as fh:
+        fh.write("\n".join(lines) + "\n")
+    return path
+
+
+# ---------------------------------------------------------------------------
 # Execution
 # ---------------------------------------------------------------------------
 def run_febio(feb_path: str, workdir: str, exe: str | None = None, dump: bool = True,
@@ -388,7 +444,9 @@ def run_febio(feb_path: str, workdir: str, exe: str | None = None, dump: bool = 
     base = os.path.splitext(os.path.basename(feb_path))[0]
     cmd = [exe, "-nosplash", "-silent", "-noconfig"]
     if restart:
-        cmd = [exe, "-nosplash", "-silent", "-noconfig", "-r", restart]
+        cmd = [exe, "-nosplash", "-silent", "-noconfig", "-r", os.path.basename(restart)]
+        if dump:
+            cmd += ["-dump", f"{base}.dmp"]
     else:
         cmd += ["-i", os.path.basename(feb_path)]
         if dump:
@@ -416,8 +474,12 @@ def run_febio(feb_path: str, workdir: str, exe: str | None = None, dump: bool = 
 
 
 def classify(rc, conv, interrupted=False) -> str:
-    if interrupted:
+    # timeout, or stopped by SIGINT/SIGTERM/SIGKILL/SIGHUP: interrupted.
+    # Any other signal (e.g. SIGSEGV) is a solver crash and therefore a failure.
+    if interrupted or (rc is not None and rc in (-1, -2, -9, -15)):
         return "interrupted"
+    if rc is not None and rc < 0:
+        return "failed"
     if conv.get("normal_termination") and rc == 0:
         return "converged"
     return "failed"

@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       texlive-latex-base texlive-latex-recommended texlive-latex-extra && rm -rf /var/lib/apt/lists/*
 WORKDIR /opt/rlfea
 COPY scripts/build_febio.sh scripts/build_febio.sh
+COPY scripts/patches scripts/patches
 RUN bash scripts/build_febio.sh && ln -s /opt/febio-4.13/bin/febio4 /usr/local/bin/febio4
 COPY requirements.lock.txt .
 RUN python3 -m pip install -r requirements.lock.txt

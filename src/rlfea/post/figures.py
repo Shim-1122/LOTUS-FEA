@@ -127,7 +127,7 @@ def contact_maps(vtp_t, meta, out_png, mu, scale=1.0):
     s.cell_data["traction_tangential_kPa"] = s.cell_data["traction_tangential"] * 1000
     panels = [("contact_pressure_kPa", "Contact pressure", "kPa", "inferno"),
               ("traction_tangential_kPa", "Tangential traction", "kPa", "magma"),
-              ("stick_slip_status", "0 open / 1 stick / 2 slip (derived)", "-", "Set1"),
+              ("stick_slip_status", "0 open / 1 stick / 2 slip (FEBio stick flag)", "-", "Set1"),
               ("contact_gap", "Gap (FEBio sign: >0 penetration)", "mm", "coolwarm")]
     p = pv.Plotter(off_screen=True, shape=(2, 4), window_size=(2000, 1250), border=False)
     for r, view in enumerate([(1.0, -1.0, 0.2), (-1.0, 1.0, 0.2)]):
@@ -142,12 +142,13 @@ def contact_maps(vtp_t, meta, out_png, mu, scale=1.0):
                 cl = [0.0, float(np.nanpercentile(arr, 99.5)) or 1e-9]
                 if r == 0:
                     p.add_text(f"max {np.nanmax(arr):.3g} {unit} (bar clipped at 99.5th pct)", position="upper_right", font_size=8)
-            p.add_mesh(s, scalars=name, clim=cl, cmap=cmap, preference="cell", lighting=False, n_colors=3 if name == "stick_slip_status" else 256,
+            cm = ["#9aa3ab", "#2e7d4f", "#d9541f"] if name == "stick_slip_status" else cmap
+            p.add_mesh(s, scalars=name, clim=cl, cmap=cm, preference="cell", lighting=False, n_colors=3 if name == "stick_slip_status" else 256,
                        scalar_bar_args={"title": f"{title} [{unit}]", "vertical": False, "position_y": 0.02, "width": 0.8, "position_x": 0.1})
             if r == 0:
                 p.add_text(title, font_size=9)
             p.view_vector(view); p.camera.zoom(1.3)
-    p.add_text(label(meta, meta["time"], scale) + f" | friction mu = {mu} | slip status derived from FEBio tractions (|t_t| >= 0.98 mu p)",
+    p.add_text(label(meta, meta["time"], scale) + f" | friction mu = {mu} | traction and stick flag = FEBio contact multipliers read from the .xplt",
                position="lower_left", font_size=11, viewport=False)
     p.screenshot(out_png)
     p.close()

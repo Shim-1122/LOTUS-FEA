@@ -26,7 +26,7 @@ DEFAULTS = {
     "contact": {"type": "sliding-elastic", "friction": 0.5, "augmented_lagrangian": False, "penalty_scale": 1.0,
                 "auto_penalty": True, "two_pass": False, "search_tol": 0.01, "search_radius": {"value": 5.0, "unit": "mm"},
                 "bonded": False},
-    "solver": {"backend": "febio", "dtol": 0.01, "etol": 0.001, "rtol": 0.0001, "lstol": 0.9, "max_refs": 50,
+    "solver": {"backend": "febio", "dtol": 0.01, "etol": 0.001, "rtol": 0.001, "lstol": 0.9, "max_refs": 50,
                "qn_method": "auto", "max_ups": 10, "n_steps": 20, "dtmin": 1e-5, "max_retries": 10, "opt_iter": 10,
                "threads": None, "timeout_s": None},
     "cable": {"guide_friction": 0.0, "route_height_fraction": 0.75, "guide_inset": {"value": 4.0, "unit": "deg"},

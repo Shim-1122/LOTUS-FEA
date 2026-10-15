@@ -166,6 +166,15 @@ def build_report(run_path: str, compile_pdf: bool = True) -> dict:
                          _fmt(c.get("normal_force_N", "")), _fmt(c.get("max_pressure_MPa", 0) * 1000 if c else ""), _fmt(c.get("slip_fraction_of_contact_area", "")),
                          _fmt(e.get("force_imbalance_relative", "")), _fmt(s.get("strain_energy_Nmm", {}).get("total_Nmm", ""))])
         L.append(_tab(rows, ["t", "max |u| tissue mm", "min J", "inverted", "contact N", "max p kPa", "slip area frac.", "force imbalance", "strain energy Nmm"]))
+        tight = [x for x in summ["states"] if x["time"] <= 1.0 + 1e-9]
+        if tight and tight[-1].get("petal_free_body"):
+            fb = tight[-1]["petal_free_body"]
+            rows = [[k, *[_fmt(np.linalg.norm(v[q]), 3) for q in ("cable_N", "hinge_on_petal_N", "pad_contact_N", "stabiliser_N", "residual_N")],
+                     _fmt(v["residual_over_cable"], 3)] for k, v in sorted(fb.items())]
+            L.append(r"\paragraph{Petal free bodies at t = " + _fmt(tight[-1]["time"]) + r" (force magnitudes, N).} "
+                     r"Pad contact force is the facet-averaged traction on the skin zone times the deformed facet area (an approximate "
+                     r"post-processed integral); the global reaction balance in the table above is the exact check.")
+            L.append(_tab(rows, ["petal", "|cable|", "|hinge|", "|pad contact|", "|stabiliser|", "|residual|", "residual/cable"]))
         last = summ["states"][-1]
         if last.get("region_extremes"):
             rows = [[k, *[_fmt(v[x]) for x in ("max_disp_mm", "max_logstrain", "min_logstrain", "max_pressure_MPa", "min_pressure_MPa", "max_von_mises_MPa", "min_J")]]

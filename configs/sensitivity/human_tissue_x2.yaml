@@ -1,0 +1,211 @@
+materials:
+  bone_deformable:
+    calibration_range: Small-strain cortical bone specimens.
+    febio_type: neo-Hookean
+    model: neo_Hookean_compressible
+    parameters:
+      E:
+        note: human cortical bone, longitudinal; applied to the WHOLE bone volume
+          (cortical/trabecular not distinguished) - simplification
+        source: ReillyBurstein1975
+        unit: MPa
+        value: 17000.0
+      v:
+        source: ReillyBurstein1975
+        unit: '-'
+        value: 0.3
+    region: bone
+  distal_cushion:
+    calibration_range: NONE (uncalibrated assumption).
+    febio_type: Mooney-Rivlin
+    model: Mooney_Rivlin_uncoupled
+    parameters:
+      c1:
+        note: ASSUMED soft gel cushion, mu = 20 kPa. Supply measured data.
+        source: assumption
+        unit: MPa
+        value: 0.01
+      c2:
+        source: assumption
+        unit: MPa
+        value: 0.0
+      k:
+        source: assumption
+        unit: MPa
+        value: 2.0
+    region: socket distal cushion
+  fat:
+    calibration_range: Inverse FE of in-vivo indentation (18 sites, 1 subject, bilateral
+      transtibial); indentation ~3.5-7 mm. Source parameters are for a combined SKIN-ADIPOSE
+      layer of 3 mm; used here for the separate fat layer (assumption).
+    febio_type: Ogden
+    model: Ogden2_symmetric
+    parameters:
+      c1:
+        note: 'source Psi = (c/m^2) sum(l~^m + l~^-m - 2) == FEBio Ogden with c1=c2=c,
+          m1=m, m2=-m; small-strain shear modulus = c SENSITIVITY: scaled x2.0'
+        source: Sengeh2016
+        unit: MPa
+        value: 0.01044
+      c2:
+        note: 'SENSITIVITY: scaled x2.0'
+        source: Sengeh2016
+        unit: MPa
+        value: 0.01044
+      k:
+        note: 'source constrained bulk = 100 c with U = k/2 (ln J)^2, identical to
+          FEBio pressure_model 0 SENSITIVITY: scaled x2.0'
+        source: Sengeh2016
+        unit: MPa
+        value: 1.044
+      m1:
+        source: Sengeh2016
+        unit: '-'
+        value: 4.79
+      m2:
+        source: Sengeh2016
+        unit: '-'
+        value: -4.79
+    region: fat
+    uncertainty:
+      c1:
+      - 0.0026
+      - 0.0104
+  muscle:
+    calibration_range: In-vivo indentation inverse FE, muscle-soft tissue complex
+      (includes tendon), relaxed muscle, single subject.
+    febio_type: Ogden
+    model: Ogden2_symmetric
+    parameters:
+      c1:
+        note: 'SENSITIVITY: scaled x2.0'
+        source: Sengeh2016
+        unit: MPa
+        value: 0.0104
+      c2:
+        note: 'SENSITIVITY: scaled x2.0'
+        source: Sengeh2016
+        unit: MPa
+        value: 0.0104
+      k:
+        note: 'SENSITIVITY: scaled x2.0'
+        source: Sengeh2016
+        unit: MPa
+        value: 1.04
+      m1:
+        source: Sengeh2016
+        unit: '-'
+        value: 4.78
+      m2:
+        source: Sengeh2016
+        unit: '-'
+        value: -4.78
+    passive_anisotropy:
+      enabled: false
+      note: No calibrated passive-muscle fibre parameters with provenance are supplied.
+        Enabling requires febio_type 'trans iso Mooney-Rivlin' parameters c1,c2,c3,c4,c5,lam_max,k
+        with sources; the code refuses to run otherwise.
+    region: muscle
+    uncertainty:
+      c1:
+      - 0.0026
+      - 0.0104
+  silicone_pad:
+    calibration_range: NONE (uncalibrated assumption).
+    febio_type: Mooney-Rivlin
+    model: Mooney_Rivlin_uncoupled
+    parameters:
+      c1:
+        note: 'ASSUMED: mu = 100 kPa -> c1 = mu/2. Supply the actual silicone''s test
+          data.'
+        source: PriorPackageAssumption
+        unit: MPa
+        value: 0.05
+      c2:
+        source: assumption
+        unit: MPa
+        value: 0.0
+      k:
+        note: near-incompressible bulk modulus (100 mu)
+        source: assumption
+        unit: MPa
+        value: 10.0
+    region: socket silicone interface
+    uncertainty:
+      c1:
+      - 0.025
+      - 0.1
+  skin:
+    applicability: Thin dermal layer with tension-only fibres. Large uncertainty for
+      in-vivo residual-limb skin.
+    calibration_range: Uniaxial tension, excised BACK skin, donors aged 81 and 89;
+      small-strain mu from < 2% strain; nonlinear fit to ~50% strain. Not lower-leg,
+      not in vivo, not compression.
+    febio_type: Holzapfel-Gasser-Ogden
+    model: HGO
+    parameters:
+      c:
+        note: source mu; FEBio ground matrix W = c/2 (I1~ - 3), so c = mu (Abaqus
+          C10 = mu/2)
+        source: NiAnnaidh2012
+        unit: MPa
+        value: 0.2014
+      gamma:
+        note: angle of each fibre family from local axis e1 (FEBio gamma). Mapping
+          of Langer lines on the lower leg to e1 is an ASSUMPTION (see fiber_reference_axis).
+        source: NiAnnaidh2012
+        unit: deg
+        value: 41.0
+      k:
+        note: bulk modulus = 100 c (near-incompressibility assumption). FEBio HGO
+          uses U = k/2((J^2-1)/2 - ln J) (= ABAQUS GOH with D = 2/k).
+        source: assumption
+        unit: MPa
+        value: 20.14
+      k1:
+        note: source reports k1 = 243.6 in its own normalisation (anisotropic term
+          scaled by mu) and gives the ABAQUS value 24.53 MPa; that ABAQUS value is
+          used. FEBio and ABAQUS share W_f = k1/(2 k2) sum(exp(k2 E^2) - 1). The source's
+          own text implies 0.2014*243.6 = 49.06 MPa under its Eq. 3; this ambiguity
+          is carried as the upper uncertainty bound.
+        source: NiAnnaidh2012
+        unit: MPa
+        value: 24.53
+      k2:
+        source: NiAnnaidh2012
+        unit: '-'
+        value: 0.1327
+      kappa:
+        note: dispersion, 0 <= kappa <= 1/3
+        source: NiAnnaidh2012
+        unit: '-'
+        value: 0.1404
+    region: skin
+    uncertainty:
+      c:
+      - 0.1
+      - 0.4
+      k1:
+      - 12.0
+      - 49.06
+references:
+  NiAnnaidh2012:
+    citation: Ni Annaidh A, Bruyere K, Destrade M, Gilchrist MD, Maurini C, Ottenio
+      M, Saccomandi G. Automated estimation of collagen fibre dispersion in the dermis
+      and its contribution to the anisotropic behaviour of skin. Ann Biomed Eng. 2012;40(8):1666-78.
+    doi: 10.1007/s10439-012-0542-3
+  PriorPackageAssumption:
+    citation: Supplied handoff package 03_Previous_Tissue_Analysis (silicone mu =
+      100 kPa listed as an assumed material; no measurement).
+    doi: null
+  ReillyBurstein1975:
+    citation: Reilly DT, Burstein AH. The elastic and ultimate properties of compact
+      bone tissue. J Biomech. 1975;8(6):393-405.
+    doi: 10.1016/0021-9290(75)90075-5
+  Sengeh2016:
+    citation: Sengeh DM, Moerman KM, Petron A, Herr H. Multi-material 3-D viscoelastic
+      model of a transtibial residuum from in-vivo indentation and MRI data. J Mech
+      Behav Biomed Mater. 2016;59:379-392.
+    doi: 10.1016/j.jmbbm.2016.02.020
+scenario: A_human_tissue
+set_name: human_tissue_v1_soft_tissue_x2

@@ -47,7 +47,8 @@ def collect(runs: dict, t: float = 1.0) -> dict:
     return out
 
 
-def table_md(rows: dict, baseline: str) -> str:
+def table_md(rows: dict, baseline: str, t: float | None = None) -> str:
+    """Relative changes are only given for runs that reached time t."""
     hdr = "| case | state | t reached | elements | " + " | ".join(m[1] for m in METRICS) + " |"
     lines = [hdr, "|" + "---|" * (4 + len(METRICS))]
     b = rows.get(baseline, {})
@@ -59,18 +60,20 @@ def table_md(rows: dict, baseline: str) -> str:
                 cells.append("-")
                 continue
             bv = b.get(key)
-            rel = f" ({100 * (v - bv) / abs(bv):+.0f}%)" if (bv not in (None, 0) and k != baseline) else ""
+            reached = t is None or (r.get("reached_t") is not None and abs(r["reached_t"] - t) < 1e-6)
+            rel = f" ({100 * (v - bv) / abs(bv):+.0f}%)" if (bv not in (None, 0) and k != baseline and reached) else ""
             cells.append(f"{v:.4g}{rel}")
-        lines.append(f"| {k} | {r.get('state')} | {r.get('reached_t')} | {r.get('n_elements', '-')} | " + " | ".join(cells) + " |")
+        flag = "" if (t is None or (r.get("reached_t") is not None and abs(r["reached_t"] - t) < 1e-6)) else " (target t NOT reached)"
+        lines.append(f"| {k} | {r.get('state')}{flag} | {r.get('reached_t')} | {r.get('n_elements', '-')} | " + " | ".join(cells) + " |")
     return "\n".join(lines)
 
 
-def plot(rows: dict, baseline: str, out_png: str, title=""):
+def plot(rows: dict, baseline: str, out_png: str, title="", t: float = 1.0):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     keys = [m for m in METRICS[:4]]
-    labels = [k for k in rows if k != baseline and rows[k].get("reached_t") == 1.0]
+    labels = [k for k in rows if k != baseline and rows[k].get("reached_t") is not None and abs(rows[k]["reached_t"] - t) < 1e-6]
     fig, ax = plt.subplots(1, len(keys), figsize=(4.2 * len(keys), 4.2))
     for a, (key, name) in zip(ax, keys):
         bv = rows[baseline].get(key)

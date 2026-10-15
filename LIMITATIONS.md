@@ -53,5 +53,24 @@ represents the real limb). No validation has been performed.
   mesh-dependent. They are not injury predictions.
 * A converged solution does not establish grip, comfort or safety. A
   prescribed-traction experiment cannot establish grip.
-* Stick or slip is derived from logged tractions. FEBio's own stick flag is
-  available only in the `.xplt` file.
+* Contact traction and stick/slip are FEBio's own contact quantities, read
+  from the `.xplt` plot file. If that file is missing, the code falls back to
+  the logfile surface traction, which is stress-based rather than contact
+  traction, and labels it as such.
+* The FEBio build carries a small source patch (`scripts/patches/`) that fixes
+  two restart serialization defects in FEBio 4.13. Without it, every `-r`
+  restart of a model with rigid bodies or logfile face data crashed. The patch
+  does not change constitutive, element, contact or solver code. The restart
+  check in `rlfea verify` compares a killed-and-resumed run against an
+  uninterrupted one. Dump files from an unpatched build cannot be resumed by
+  the patched build.
+* Energy convergence tolerance: the synthetic runs use `etol = 1e-3`. The
+  supplied-limb run uses FEBio's default `etol = 0.01`, because with `1e-3`
+  full Newton entered a friction stick/slip two-cycle at 48 N. That cycle
+  kept the energy norm just above the 1e-3 tolerance, although the residual
+  and displacement criteria were met. The setting is recorded in every
+  run's resolved configuration.
+* Penalty contact (scale 0.1 on FEBio's auto-penalty) leaves up to about
+  1 mm of penetration at 75 N on the synthetic model. That is a
+  regularisation error on the same order as the 3 mm pad thickness, and it
+  is quantified by the augmented-Lagrangian sensitivity run.

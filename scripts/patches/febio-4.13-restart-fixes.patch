@@ -1,0 +1,69 @@
+diff --git a/FEBioMech/FERigidSolidDomain.cpp b/FEBioMech/FERigidSolidDomain.cpp
+index ed7102a..c2dd7e6 100644
+--- a/FEBioMech/FERigidSolidDomain.cpp
++++ b/FEBioMech/FERigidSolidDomain.cpp
+@@ -66,8 +66,11 @@ void FERigidSolidDomain::Reset()
+ 
+ void FERigidSolidDomain::Serialize(DumpStream& ar)
+ {
+-	// we bypass FEDomain::Serialize since we don't need to serialize anything for the rigid solids
+-	FEMeshPartition::Serialize(ar);
++	// rlfea patch: the upstream version bypassed FEDomain::Serialize, so on a
++	// restart (-r) the rigid domain came back with no material and no elements
++	// and the first plot write crashed (null material in FEPlotElementStress).
++	// Serialize the domain fully, like any elastic solid domain.
++	FEElasticSolidDomain::Serialize(ar);
+ }
+ 
+ void FERigidSolidDomain::PreSolveUpdate(const FETimeInfo& timeInfo)
+diff --git a/FECore/FaceDataRecord.cpp b/FECore/FaceDataRecord.cpp
+index 9df22e6..cee9820 100644
+--- a/FECore/FaceDataRecord.cpp
++++ b/FECore/FaceDataRecord.cpp
+@@ -28,6 +28,9 @@ SOFTWARE.*/
+ #include "FECoreKernel.h"
+ #include "FEModel.h"
+ #include "FESurface.h"
++#include "FEModel.h"
++#include "FEMesh.h"
++#include "DumpStream.h"
+ 
+ //-----------------------------------------------------------------------------
+ FELogFaceData::FELogFaceData(FEModel* fem) : FELogData(fem) {}
+@@ -98,3 +101,23 @@ void FaceDataRecord::SetItemList(FEItemList* itemList, const std::vector<int>& s
+ 		m_item = selection;
+ 	}
+ }
++
++//-----------------------------------------------------------------------------
++// rlfea patch: DataRecord::Serialize does not store the surface, so after a
++// restart (-r) m_surface was null and the first logfile write crashed.
++void FaceDataRecord::Serialize(DumpStream& ar)
++{
++	DataRecord::Serialize(ar);
++	if (ar.IsShallow()) return;
++	std::string name;
++	if (ar.IsSaving())
++	{
++		if (m_surface) name = m_surface->GetName();
++		ar << name;
++	}
++	else
++	{
++		ar >> name;
++		m_surface = (name.empty() ? nullptr : GetFEModel()->GetMesh().FindSurface(name));
++	}
++}
+diff --git a/FECore/FaceDataRecord.h b/FECore/FaceDataRecord.h
+index cf6a0be..910bede 100644
+--- a/FECore/FaceDataRecord.h
++++ b/FECore/FaceDataRecord.h
+@@ -57,6 +57,8 @@ public:
+ 
+ 	void SetItemList(FEItemList* itemList, const std::vector<int>& selection) override;
+ 
++	void Serialize(DumpStream& ar) override;	// rlfea patch: restore the surface pointer on restart
++
+ private:
+ 	FESurface*	m_surface;
+ 	vector<FELogFaceData*>	m_Data;

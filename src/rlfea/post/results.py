@@ -85,7 +85,39 @@ def element_fields(F: np.ndarray, S6: np.ndarray) -> dict:
             "shear_strain_max": 0.5 * (H[:, 2] - H[:, 0])}
 
 
-def contact_fields(X0, U, tri, D, mu):
+def attach_true_contact(raw: dict, solver_dir: str, model: FEModel, surface_names: list[str]) -> dict:
+    """Replace the logfile 'contact_traction' (a stress-based surface traction,
+    NOT the contact multiplier) with FEBio's true contact traction and stick
+    flag read from the .xplt plot file.  Surfaces in the plot file follow the
+    sorted order in which the FEBio writer emits them; facet counts are checked."""
+    from ..solvers.febio import spec_surfaces  # noqa: F401  (documentation of ordering)
+    from .xplt import read_face_data
+    xp = os.path.join(solver_dir, "model.xplt")
+    info = {"source": "logfile (stress-based traction)", "xplt": False}
+    if not os.path.exists(xp):
+        return info
+    d = read_face_data(xp)
+    order = sorted(set(surface_names) | set(raw.get("_all_surfaces", [])))
+    info.update({"source": "xplt contact traction (Lagrange multipliers) + stick flag", "xplt": True})
+    for st in raw["states"]:
+        k = [i for i, t in enumerate(d["times"]) if t is not None and abs(t - st["time"]) < 1e-5]
+        if not k:
+            continue
+        k = k[0]
+        trac = d["data"]["contact traction"][k]
+        stick = d["data"]["contact stick"][k]
+        st["true_contact"] = {}
+        names_in_file = list(trac.keys())
+        for i, nm in enumerate(order):
+            key = f"surface{i + 1}"
+            if key in trac and nm in surface_names and len(trac[key]) == len(model.surfaces[nm].conn):
+                st["true_contact"][nm] = {"traction": trac[key], "stick": stick.get(key)}
+        info["matched_surfaces"] = sorted(st["true_contact"])
+        info["file_surfaces"] = len(names_in_file)
+    return info
+
+
+def contact_fields(X0, U, tri, D, mu, true_traction=None, stick=None):
     """Normal/tangential decomposition on the DEFORMED primary facets.
     Status: 0 open (p<=0), 1 stick (|t_t| < 0.98 mu p), 2 slip (|t_t| >= 0.98 mu p).
     The slip classification is DERIVED from FEBio's traction output."""
@@ -94,13 +126,18 @@ def contact_fields(X0, U, tri, D, mu):
     area = 0.5 * np.linalg.norm(n, axis=1)
     n = n / (np.linalg.norm(n, axis=1)[:, None] + 1e-300)
     gap, p, t = D[:, 0], D[:, 1], D[:, 2:5]
+    if true_traction is not None:
+        t = np.asarray(true_traction)
     tn = np.einsum("ij,ij->i", t, n)
     tt_vec = t - tn[:, None] * n
     tt = np.linalg.norm(tt_vec, axis=1)
     status = np.zeros(len(p), int)
     act = p > 1e-9
     status[act] = 1
-    if mu > 0:
+    if stick is not None:
+        # FEBio stick flag = fraction of facet integration points in stick; < 0.5 -> slip
+        status[act & (np.asarray(stick) < 0.5)] = 2
+    elif mu > 0:
         status[act & (tt >= 0.98 * mu * p)] = 2
     else:
         status[act] = 2          # frictionless: every active point is free to slide

@@ -21,6 +21,7 @@ def main():
     ap.add_argument("--main", required=True)
     ap.add_argument("--sens", nargs="*", default=[])
     ap.add_argument("--baseline", default=None)
+    ap.add_argument("--sens-times", type=float, nargs="*", default=[1.0])
     ap.add_argument("--out", default="docs/RESULTS.md")
     ap.add_argument("--figdir", default="docs/figures")
     a = ap.parse_args()
@@ -58,11 +59,18 @@ def main():
     if a.sens:
         runs = dict(x.split("=", 1) for x in a.sens)
         base = a.baseline or list(runs)[0]
-        rows = SE.collect(runs, 1.0)
-        L += ["## Sensitivity (coarse synthetic mesh, end of tightening, t = 1)", "", SE.table_md(rows, base), ""]
-        SE.plot(rows, base, os.path.join(a.figdir, "sensitivity.png"), "coarse synthetic model, 75 N example")
-        L.append("![sensitivity](figures/sensitivity.png)")
-        json.dump(rows, open(os.path.join(os.path.dirname(a.out), "sensitivity.json"), "w"), indent=1)
+        allrows = {}
+        for t in a.sens_times:
+            rows = SE.collect(runs, t)
+            allrows[str(t)] = rows
+            L += [f"## Sensitivity (coarse synthetic mesh, t = {t:g}, i.e. {75 * t:g} N of the 75 N example tension)", "",
+                  "Runs that did not reach this time are shown at their last converged output and flagged.", "",
+                  SE.table_md(rows, base, t), ""]
+            fn = f"sensitivity_t{t:g}.png".replace(".", "p", 1) if t != 1 else "sensitivity.png"
+            SE.plot(rows, base, os.path.join(a.figdir, fn), f"coarse synthetic model, t = {t:g} (75 N example x {t:g})", t)
+            L.append(f"![sensitivity t={t:g}](figures/{fn})")
+            L.append("")
+        json.dump(allrows, open(os.path.join(os.path.dirname(a.out), "sensitivity.json"), "w"), indent=1)
     open(a.out, "w").write("\n".join(L) + "\n")
     print("wrote", a.out)
 

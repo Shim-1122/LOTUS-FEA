@@ -22,7 +22,7 @@ jobs:
         with: {python-version: "3.13"}
       - uses: actions/cache@v4
         id: febio
-        with: {path: /opt/febio-4.13, key: febio-4.13-32ae206-mkl2024.2.2}
+        with: {path: /opt/febio-4.13, key: febio-4.13-32ae206-mkl2024.2.2-${{ hashFiles('scripts/build_febio.sh', 'scripts/patches/*') }}}
       - if: steps.febio.outputs.cache-hit != 'true'
         run: sudo -E env "PATH=$PATH" PREFIX=/opt/febio-4.13 MKL=/opt/mkl bash scripts/build_febio.sh
       - run: sudo apt-get update && sudo apt-get install -y libglu1-mesa libxrender1 libxcursor1 libxft2 libxinerama1 libgl1 libosmesa6

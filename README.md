@@ -56,7 +56,8 @@ rlfea verify --out verification_runs                # analytical / independent-r
 rlfea run configs/synthetic_human.yaml --runs runs  # synthetic full limb: tightening (75 N example) + pull-out
 rlfea status runs/<run_id>                          # prepared | running | converged | failed | interrupted
 rlfea post runs/<run_id>                            # re-derive fields, VTK, figures, report from raw output
-rlfea solve runs/<run_id> --restart runs/<run_id>/solver/model.dmp   # FEBio restart
+rlfea solve runs/<run_id> --restart runs/<run_id>/solver/model.dmp [--set etol=0.01]
+                                                    # resume from the last converged step (patched FEBio, see docs)
 rlfea gui --runs runs --port 8080                   # interactive viewer at http://localhost:8080
 rlfea audit path/to/limb.step path/to/bone.step     # geometry audit only (no modification)
 pytest -q                                           # unit tests (+ FEBio benchmarks when febio4 is available)

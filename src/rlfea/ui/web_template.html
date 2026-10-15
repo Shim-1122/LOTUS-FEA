@@ -70,7 +70,7 @@ dt{color:var(--muted)} dd{margin:0;font-family:var(--mono);font-variant-numeric:
           <option value="u">Displacement magnitude |u| (mm), nodal</option>
           <option value="p">Contact pressure (kPa), per facet</option>
           <option value="tt">Tangential traction (kPa), per facet</option>
-          <option value="ss">Stick / slip (derived), per facet</option>
+          <option value="ss">Stick / slip (FEBio stick flag), per facet</option>
         </select></div>
       <div class="ctl"><span class="lab">Deformation scale</span>
         <div class="seg" id="scales"><button aria-pressed="true" data-s="1">1x true</button><button aria-pressed="false" data-s="3">3x</button><button aria-pressed="false" data-s="5">5x</button></div></div>
@@ -95,7 +95,7 @@ $("title").textContent=(D.synthetic?"Synthetic limb · ":"")+D.run_name;
 const st=$("state"); st.textContent=D.state; st.className="pill "+(D.state==="converged"?"ok":"bad");
 $("sub").textContent=`FEBio ${D.febio} · run ${D.run_id}`+(D.state!=="converged"?` · last accepted time ${D.last_converged_time}`:"")+` · friction ${D.friction}`;
 const notes=["Every colour is an actual FEBio output at the selected output time. Nodal displacements are drawn at the nodes; contact quantities are drawn flat per facet with no smoothing.",
- "Peak contact pressures change with mesh density and are not injury predictions. Stick/slip is derived from logged tractions (|t_t| ≥ 0.98 μp means slip).",
+ "Peak contact pressures change with mesh density and are not injury predictions. Contact traction and stick/slip are FEBio's own contact quantities (Lagrange multipliers and stick flag from the plot file).",
  "Numerical verification only. The socket is a provisional parametric model and the 75 N lace tension is an example, not a RevoFit rating."].concat(D.warnings.slice(0,4));
 $("notes").innerHTML=notes.map(n=>`<li>${n.replace(/</g,"&lt;")}</li>`).join("");
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();

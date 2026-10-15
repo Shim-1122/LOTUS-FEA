@@ -3,7 +3,7 @@
     rlfea audit GEOMETRY... [--unit mm]        geometry audit (no modification)
     rlfea prepare CONFIG [--runs DIR]          build mesh + solver input only (state: prepared)
     rlfea run CONFIG [--runs DIR]              prepare + solve + post-process + figures + report
-    rlfea solve RUN_DIR [--restart DUMP]       (re)run FEBio for a prepared run
+    rlfea solve RUN_DIR [--restart DUMP --set etol=0.01]  (re)run or resume FEBio, then post-process
     rlfea post RUN_DIR                         derive fields, VTK export, checks, figures, report
     rlfea status RUN_DIR                       job state
     rlfea verify [--out DIR]                   analytical / benchmark verification suite
@@ -36,6 +36,8 @@ def main(argv=None):
         p = sub.add_parser(name); p.add_argument("config"); p.add_argument("--runs", default="runs"); p.add_argument("--id")
         p.add_argument("--threads", type=int); p.add_argument("--timeout", type=float)
     s = sub.add_parser("solve"); s.add_argument("run_dir"); s.add_argument("--restart"); s.add_argument("--threads", type=int)
+    s.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
+                   help="restart override, e.g. etol=0.01 or max_retries=10 (recorded in the manifest)")
     sub.add_parser("post").add_argument("run_dir")
     sub.add_parser("status").add_argument("run_dir")
     v = sub.add_parser("verify"); v.add_argument("--out", default="verification_runs"); v.add_argument("--quick", action="store_true")
@@ -69,8 +71,15 @@ def main(argv=None):
     elif args.cmd == "solve":
         from . import provenance as P, runner
         rd = P.RunDir(os.path.dirname(os.path.abspath(args.run_dir)), os.path.basename(os.path.abspath(args.run_dir)))
-        res = runner.execute(rd, threads=args.threads, restart=args.restart)
-        print(res["status"])
+        ov = {}
+        for kv in args.set:
+            k, v = kv.split("=", 1)
+            ov[k] = float(v) if any(c in v for c in ".e") else int(v)
+        if ov and not args.restart:
+            sys.exit("--set is only supported together with --restart")
+        res = runner.execute(rd, threads=args.threads, restart=args.restart, overrides=ov)
+        print(res["status"], "last converged time:", res["convergence"].get("last_converged_time"))
+        _post(rd.path)
     elif args.cmd == "post":
         _post(args.run_dir)
     elif args.cmd == "status":

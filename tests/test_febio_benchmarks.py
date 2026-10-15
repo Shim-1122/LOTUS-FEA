@@ -50,3 +50,25 @@ def test_hinge_spring(tmp_path):
 def test_energy_balance(tmp_path):
     r = B.energy_balance_case(str(tmp_path))
     assert r["rel_diff"] < 0.02
+
+
+def test_xplt_true_contact_traction_obeys_coulomb(tmp_path):
+    """The plot-file contact traction (Lagrange multipliers) must satisfy
+    |t_t| = mu |t_n| over the sliding contact patch; the logfile
+    'contact_traction' (stress-based) is not used for this."""
+    import os
+    from rlfea.post.xplt import read_face_data
+    r = B.contact_slide_case(str(tmp_path), mu=0.3)
+    d = read_face_data(os.path.join(str(tmp_path), "slide.xplt"))
+    surf = d["data"]["contact traction"][-1]
+    t = max(surf.values(), key=lambda a: np.abs(a).sum())      # primary (soft_top) carries the multipliers
+    act = np.linalg.norm(t, axis=1) > 1e-12
+    tn = np.abs(t[act, 2]); tt = np.linalg.norm(t[act, :2], axis=1)
+    assert r["status"] == "converged"
+    assert abs(tt.sum() / tn.sum() - 0.3) < 0.03
+
+
+def test_restart_after_kill_reproduces_uninterrupted_run(tmp_path):
+    r = B.restart_case(str(tmp_path))
+    assert r["first_status"] == "interrupted" and r["restart_status"] == "converged", r
+    assert r["pass"], r

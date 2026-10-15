@@ -3,6 +3,7 @@
 # Verified on Ubuntu 24.04 / GCC 13 / CMake 3.28.  Installs to $PREFIX (default /opt/febio-4.13)
 # and creates a wrapper $PREFIX/bin/febio4 that sets LD_LIBRARY_PATH.
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PREFIX=${PREFIX:-/opt/febio-4.13}
 WORK=${WORK:-$(mktemp -d)}
 TAG=v4.13
@@ -19,6 +20,12 @@ cd "$WORK/febio"
 test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT" || { echo "unexpected commit"; exit 1; }
 # Build patch (documented): allow FindLib to accept shared MKL libraries on Linux.
 sed -i 's/find_library(TEMP NAMES lib${libName}.a lib${ARGV3}.a/find_library(TEMP NAMES lib${libName}.a lib${libName}.so lib${ARGV3}.a/' CMakeLists.txt
+# Source patch (documented in docs/solver_selection.md): two restart (-r) bugs in FEBio 4.13 that
+# crash every resumed model containing rigid bodies or logfile face_data:
+#   * FERigidSolidDomain::Serialize skipped the domain material/elements -> null material in plot output
+#   * FaceDataRecord did not serialize its surface -> null surface in logfile output
+# The patch changes only serialization; it does not touch any constitutive, contact or solver code.
+git apply "$SCRIPT_DIR/patches/febio-4.13-restart-fixes.patch"
 mkdir -p cbuild && cd cbuild
 cmake .. -DCMAKE_BUILD_TYPE=Release -DUSE_MKL=ON -DMKLROOT="$(dirname "$MKLLIB")" -DMKL_INC="$MKLINC" \
   -DMKL_LIB_DIR="$MKLLIB" -DMKL_OMP_LIB="$MKLLIB/libiomp5.so" -DUSE_ZLIB=OFF -DUSE_STATIC_STDLIBS=OFF

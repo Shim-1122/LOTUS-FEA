@@ -23,7 +23,7 @@ and the FEBioMech/FEBioXML source of the same commit, then exercised by
 | Explicit bonded interfaces | `tied-elastic` (only when `contact.bonded: true`) | UM §3.14 |
 | Rigid bones / petals, hinges | `rigid body`, `rigid revolute joint`, `rigid spring`, `rigid_force`, `rigid_moment` | UM §3.12 |
 | Incremental loading with adaptive steps | auto time stepper (`dtmin`, `dtmax` must-point curve, `max_retries`, `opt_iter`) | UM §3.3.2 |
-| Restart | `-dump` / `-r` command-line options | `FEBioApp.cpp` |
+| Restart | `-dump` / `-r` command-line options; restart file `<febio_restart version="4.0">` with `<Archive>` and optional `<Control>` (`step_size`, `time_stepper`, `solver` parameters) | `FEBioApp.cpp`, `FEBioXML/FERestartImport.cpp` |
 
 ## Conventions that differ between solvers (do NOT assume identical HGO definitions)
 * FEBio HGO ground matrix `W = c/2 (I1~-3)`: FEBio `c` = ABAQUS `2*C10` = Ni Annaidh `mu`.
@@ -38,9 +38,13 @@ shear, volumetric and general deformations (`rlfea verify`).
 ## Build notes
 * MKL 2025+ removed the legacy sparse BLAS routine `mkl_dcsrtrsv` used by FEBio 4.13's ILU0 preconditioner; MKL 2024.2.2 is pinned.
 * FEBio's CMake looks only for static MKL on Linux; `scripts/build_febio.sh` applies a one-line documented patch to accept shared libraries.
+* **Source patch for restart** (`scripts/patches/febio-4.13-restart-fixes.patch`). Unpatched FEBio 4.13 crashed with SIGSEGV on every `-r` restart of these models. Two serialization defects caused it, both traced with gdb:
+  1. `FERigidSolidDomain::Serialize` bypassed `FEDomain::Serialize`, so the rigid domain came back with no material and no elements. The first plot write then dereferenced a null material (`FEPlotElementStress::Save` → `FECoreBase::Properties`).
+  2. `FaceDataRecord` did not store its surface, so the first logfile `face_data` write dereferenced a null surface (`FaceDataRecord::Evaluate`).
+  The patch only adds the missing serialization. It does not touch constitutive, contact, element or solver code. `rlfea verify` checks it by killing a frictional-contact/rigid-body model with SIGKILL, resuming it with `-r`, and comparing every output time against an uninterrupted run (identical reactions). Dump files written by an unpatched build cannot be read by the patched build.
 * An empty `<Globals><Constants/></Globals>` block makes FEBio 4.13 drop the Material section; the writer omits Globals.
 * Load-controller ids must be consecutive; the writer renumbers them.
 
 ## Not supported / not used
 * No constitutive model is substituted silently: if a requested model is unavailable the configuration is rejected.
-* Contact stick status is written by FEBio only to the binary `.xplt` plot file. Reports use a stick/slip classification **derived** from the logged contact tractions (`|t_t| >= 0.98 mu p` = slip) and label it as derived. The `.xplt` is preserved for inspection in FEBio Studio.
+* FEBio 4.13 writes the TRUE contact traction (Lagrange multipliers `m_tr`) and the stick flag only to the binary `.xplt` plot file. The logfile variable `contact_traction.x/y/z` is a different quantity: the solid element stress projected on the facet normal (`FEContactSurface::GetSurfaceTraction`). Using it as contact traction gave petal force-balance residuals of 15-54%. `rlfea.post.xplt` therefore reads the true traction and stick flag from the plot file. With them the per-petal free bodies (cable + hinge + stabiliser + pad contact) close to below 0.5%.

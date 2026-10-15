@@ -1,0 +1,108 @@
+# Sensitivity variant of configs/synthetic_human.yaml (tightening only, 75 N example tension).
+# Run: rlfea run configs/sensitivity/s_proxfixed.yaml --runs runs/sensitivity
+cable:
+  guide_friction: 0.0
+  rated_tension: null
+  rating_fractions:
+  - 0.25
+  - 0.5
+  - 0.75
+  - 1.0
+  route_height_fraction: 0.75
+  routing: default
+  strand_tension:
+    unit: N
+    value: 75
+  tension_is_example: true
+contact:
+  augmented_lagrangian: false
+  friction: 0.5
+  penalty_scale: 0.1
+  type: sliding-elastic
+geometry:
+  expected_bones:
+  - tibia
+  - fibula
+  remesh:
+    bone_size:
+      unit: mm
+      value: 6.0
+    skin_size:
+      unit: mm
+      value: 9.0
+  source: synthetic
+  synthetic:
+    length:
+      unit: mm
+      value: 200
+layers:
+  fat_thickness:
+    unit: mm
+    value: 3.0
+  muscle_formulation: ut4
+  skin_fiber_reference: circumferential
+  skin_thickness:
+    unit: mm
+    value: 1.5
+load_cases:
+  pullout:
+    enabled: false
+  tightening:
+    enabled: true
+load_model: resolved_contact
+materials:
+  bones: rigid
+  regions:
+    distal_cushion: distal_cushion
+    fat: fat
+    muscle: muscle
+    proximal_cap: muscle
+    silicone_pad: silicone_pad
+    skin: skin
+  set: ../materials/human_tissue.yaml
+run_name: s_proxfixed
+socket:
+  cup_thickness:
+    unit: mm
+    value: 4.0
+  cushion_thickness:
+    unit: mm
+    value: 6.0
+  element_size:
+    unit: mm
+    value: 8.0
+  enabled: true
+  gap_deg: 8
+  initial_gap:
+    unit: mm
+    value: -0.1
+  n_petals: 6
+  pad_thickness:
+    unit: mm
+    value: 3.0
+  posterior_clearance_drop:
+    unit: mm
+    value: 25
+  shell_thickness:
+    unit: mm
+    value: 4.0
+  stabilizer_k:
+    unit: N/mm
+    value: 0.05
+  tip_drop:
+    unit: mm
+    value: 12
+  z_base:
+    unit: mm
+    value: 40
+  z_top:
+    unit: mm
+    value: 150
+solver:
+  max_retries: 10
+  n_steps: 50
+supports:
+  bones:
+    fibula: free
+    tibia: fixed
+  proximal_cut: fixed

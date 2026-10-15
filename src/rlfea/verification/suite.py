@@ -83,6 +83,9 @@ def run_suite(out_dir: str, quick: bool = False) -> dict:
     r = B.energy_balance_case(os.path.join(out_dir, "energy"))
     add("Energy balance, frictionless indentation", "|W_ext - U| / U (trapezoid over 10 must points)",
         r.get("rel_diff", np.nan), 0.02, r["status"] == "converged" and r.get("rel_diff", 1) < 0.02, r)
+    r = B.restart_case(os.path.join(out_dir, "restart"))
+    add("Restart after SIGKILL (frictional contact + rigid body)", "max relative rigid reaction difference vs uninterrupted run",
+        r["max_rel_reaction_difference"], 1e-6, r["pass"], r)
     # locking / near incompressibility: compression-dominated indentation at the
     # bulk/shear ratio used for the tissues (k = 100 mu); hex8 three-field mesh
     # refinement gives the reference.  Bending cantilever results are kept as
@@ -105,9 +108,13 @@ def run_suite(out_dir: str, quick: bool = False) -> dict:
         r = B.indentation_locking_case(os.path.join(out_dir, f"ind_{et}_{dom}_{n}"), et, dom, par, n, 100.0)
         key = f"{et}/{dom or 'standard'} n={n}"
         lock[key] = r
-        ratio = r.get("patch_force_N", np.nan) / F0
+        # Locking is isolated from discretisation error by comparing with the
+        # hex8 three-field result on the SAME mesh density n (the ratio to the
+        # finest hex8 mesh mixes both effects and is kept as information).
+        ratio = r.get("patch_force_N", np.nan) / refs[n]["patch_force_N"]
+        r["ratio_to_finest_hex8"] = r.get("patch_force_N", np.nan) / F0
         add(f"Near-incompressible indentation (k = 100 mu): {key}",
-            f"patch force / hex8 n={nref} reference" + (" (locking EXPECTED for standard tet4)" if expect_lock else ""),
+            f"patch force / hex8 three-field at the same n" + (" (locking EXPECTED for standard tet4)" if expect_lock else ""),
             ratio, None if expect_lock else 0.10, (ratio > 1.5) if expect_lock else abs(ratio - 1) < 0.10, r)
     r = B.indentation_locking_case(os.path.join(out_dir, "ind_ut4_k1000"), "tet4", "ut4-solid", {"alpha": 0.05, "iso_stab": 0}, 8, 1000.0)
     rh = B.indentation_locking_case(os.path.join(out_dir, "ind_hex8_k1000"), "hex8", None, None, 8, 1000.0)

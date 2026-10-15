@@ -30,7 +30,7 @@ CELL_FIELDS = {"J (-)": "J", "max principal log strain (-)": "logstrain_max", "m
                "tet radius ratio (-)": "radius_ratio", "min scaled Jacobian, initial (-)": "min_scaled_jacobian_initial",
                "material region (block id)": "block_id"}
 CONTACT_FIELDS = {"contact pressure (MPa)": "contact_pressure", "tangential traction (MPa)": "traction_tangential",
-                  "stick/slip 0 open 1 stick 2 slip (derived)": "stick_slip_status", "contact gap (mm)": "contact_gap",
+                  "stick/slip 0 open 1 stick 2 slip (FEBio flag)": "stick_slip_status", "contact gap (mm)": "contact_gap",
                   "friction utilisation (-)": "friction_utilisation"}
 
 

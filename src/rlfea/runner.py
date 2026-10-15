@@ -83,7 +83,29 @@ def prepare(config_path: str, runs_root: str = "runs", run_id: str | None = None
     return rd
 
 
-def execute(rd: P.RunDir, threads: int | None = None, timeout: float | None = None, restart: str | None = None) -> dict:
+def execute(rd: P.RunDir, threads: int | None = None, timeout: float | None = None, restart: str | None = None,
+            overrides: dict | None = None) -> dict:
+    """Run FEBio.  With `restart` (a .dmp written at the last converged step)
+    the solve resumes from that state; `overrides` (solver tolerances, time
+    stepper) are written into the restart file and recorded in the manifest."""
+    if restart:
+        overrides = overrides or {}
+        solver = {k: v for k, v in overrides.items() if k in FB.RESTART_SOLVER_KEYS}
+        stepper = {k: v for k, v in overrides.items() if k in FB.RESTART_STEPPER_KEYS}
+        control = {k: v for k, v in overrides.items() if k in FB.RESTART_CONTROL_KEYS}
+        unknown = set(overrides) - set(solver) - set(stepper) - set(control)
+        if unknown:
+            raise ValueError(f"unsupported restart override(s): {sorted(unknown)}")
+        if restart.endswith(".dmp"):
+            dump = os.path.abspath(restart)
+            if os.path.dirname(dump) != os.path.abspath(rd.p("solver")):
+                raise ValueError("restart dump must be inside the run's solver directory")
+            restart = FB.write_restart(rd.p("solver", "restart.feb"), dump, solver, stepper, control)
+        man = json.load(open(rd.p("manifest.json")))
+        man.setdefault("restarts", []).append({
+            "restart_file": os.path.basename(restart), "overrides": overrides,
+            "previous_status": P.read_status(rd.path), "time": time.strftime("%Y-%m-%dT%H:%M:%S%z")})
+        P.dump(rd.p("manifest.json"), man)
     rd.set_status("running")
     try:
         res = FB.run_febio(rd.p("solver", "model.feb"), rd.p("solver"), threads=threads, timeout=timeout, restart=restart)
@@ -99,6 +121,17 @@ def execute(rd: P.RunDir, threads: int | None = None, timeout: float | None = No
     return res
 
 
+def _convergence(run_path: str) -> dict:
+    """convergence.json, or (if the wrapper itself was killed before writing
+    it) a fresh parse of the FEBio log, which is then saved."""
+    p = os.path.join(run_path, "solver", "convergence.json")
+    if not os.path.exists(p):
+        log = os.path.join(run_path, "solver", "model.log")
+        conv = FB.parse_log(log) if os.path.exists(log) else {"last_converged_time": 0.0, "steps": []}
+        P.dump(p, conv)
+    return json.load(open(p))
+
+
 def postprocess(run_path: str) -> dict:
     """Derive fields, export VTK and compute checks for every output time
     that FEBio actually wrote (converged must points)."""
@@ -108,6 +141,9 @@ def postprocess(run_path: str) -> dict:
     status = P.read_status(run_path)
     cfg = json.load(open(os.path.join(run_path, "config.resolved.json")))
     raw = RS.load_raw(os.path.join(run_path, "solver"), model, spec.log_surfaces)
+    from .solvers.febio import spec_surfaces
+    raw["_all_surfaces"] = list(spec_surfaces(model, spec).keys())
+    contact_source = RS.attach_true_contact(raw, os.path.join(run_path, "solver"), model, spec.log_surfaces)
     V0 = RS.element_volumes(model)
     offs, slices = 0, {}
     for b in model.blocks:
@@ -116,7 +152,7 @@ def postprocess(run_path: str) -> dict:
     mu = cfg["contact"]["friction"]
     q = RS.initial_quality(model)
     region_id = np.concatenate([np.full(len(b.conn), i) for i, b in enumerate(model.blocks)])
-    summary = {"status": status, "times": raw["times"], "states": []}
+    summary = {"status": status, "times": raw["times"], "states": [], "contact_source": contact_source}
     pvd = []
     skin_tris = np.vstack([model.surfaces[s].conn for s in spec.log_surfaces]) if spec.log_surfaces else np.zeros((0, 3), int)
     for k, st in enumerate(raw["states"]):
@@ -153,7 +189,9 @@ def postprocess(run_path: str) -> dict:
             parts, zone = [], []
             for zi, s in enumerate(spec.log_surfaces):
                 if s in st["faces"]:
-                    cf = RS.contact_fields(model.nodes, U, model.surfaces[s].conn, st["faces"][s], mu)
+                    tc = st.get("true_contact", {}).get(s)
+                    cf = RS.contact_fields(model.nodes, U, model.surfaces[s].conn, st["faces"][s], mu,
+                                           tc["traction"] if tc else None, tc["stick"] if tc else None)
                     cf["zone"] = np.full(len(cf["contact_pressure"]), zi)
                     parts.append(cf)
             cat = {kk: np.concatenate([p_[kk] for p_ in parts]) for kk in parts[0]}
@@ -185,6 +223,25 @@ def postprocess(run_path: str) -> dict:
             names = [c["name"] for c in spec.connectors]
             rec["connectors"] = {names[int(i) - 1] if int(i) - 1 < len(names) else str(i): d.tolist()
                                  for i, d in zip(st["connectors"]["ids"], st["connectors"]["data"])}
+        # per-petal free body: cable (applied) + hinge + stabiliser + pad contact (= -skin traction resultant)
+        try:
+            lr = json.load(open(os.path.join(run_path, "solver", "load_report.json")))
+            if lr.get("cable") and "connectors" in rec and "contact" in rec:
+                fbd = {}
+                lam = min(t, 1.0)
+                for pname, bl in lr["cable"]["body_loads"].items():
+                    Fc = lam * np.array(bl["F_N"])
+                    H = -np.array(rec["connectors"].get(f"hinge_{pname}", [0, 0, 0])[:3])          # connector force reported on body_a (cup)
+                    Sk = np.array(rec["connectors"].get(f"stabilizer_{pname}", [0, 0, 0])[:3])
+                    Pc = -np.array(rec["contact"]["per_zone"].get(f"skin_{pname}_zone", {}).get("traction_resultant_N", [0, 0, 0]))
+                    r = Fc + H + Sk + Pc
+                    fbd[pname] = {"cable_N": Fc.tolist(), "hinge_on_petal_N": H.tolist(), "stabiliser_N": Sk.tolist(),
+                                  "pad_contact_N": Pc.tolist(), "residual_N": r.tolist(),
+                                  "residual_over_cable": float(np.linalg.norm(r) / max(np.linalg.norm(Fc), 1e-12)),
+                                  "stabiliser_share_of_cable": float(np.linalg.norm(Sk) / max(np.linalg.norm(Fc), 1e-12))}
+                rec["petal_free_body"] = fbd
+        except Exception as e:  # noqa: BLE001
+            rec["petal_free_body_error"] = str(e)
         summary["states"].append(rec)
     with open(os.path.join(run_path, "results", "collection.pvd"), "w") as fh:
         fh.write('<?xml version="1.0"?>\n<VTKFile type="Collection" version="0.1">\n<Collection>\n')
@@ -240,7 +297,7 @@ def make_figures(run_path: str, exaggeration: float | None = 5.0) -> dict:
         idx["contact"] = FG.contact_maps(vtp, meta, os.path.join(figdir, "contact.png"), cfg["contact"]["friction"])
     idx["regions"] = FG.regions_and_fibers(run_path, vtu0, meta, os.path.join(figdir, "regions_fibers.png"), model)
     idx["quality"] = FG.mesh_quality(run_path, os.path.join(run_path, "mesh", "model.vtu"), meta, os.path.join(figdir, "mesh_quality.png"))
-    conv = json.load(open(os.path.join(run_path, "solver", "convergence.json")))
+    conv = _convergence(run_path)
     idx["convergence"] = FG.convergence_plot(conv, os.path.join(figdir, "convergence.png"), title=f"{man.get('run_name')} | state {st.get('state')}")
     if load.get("cable"):
         petals = [{"name": p.name, "theta_center_deg": p.theta_center_deg, "half_width_deg": p.half_width_deg,

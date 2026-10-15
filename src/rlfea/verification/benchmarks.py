@@ -172,6 +172,7 @@ def contact_slide_case(workdir, mu=0.3, quick=False, slide=2.0, press=0.1, n=4, 
                       "params": {"laugon": "PENALTY", "penalty": 1.0, "auto_penalty": 1, "two_pass": 0, "fric_coeff": mu,
                                  "symmetric_stiffness": 0, "tension": 0, "search_tol": 0.01}}]
     spec.log_surfaces = ["soft_top"]; spec.log_rigid = True
+    spec.plot_vars = spec.plot_vars + ["contact traction", "contact stick", "contact pressure", "contact gap"]
     spec.solver["symmetric_stiffness"] = 0
     spec.load_curves = {1: {"points": [(0, 0), (1, 1)]}, 2: {"points": [(1, 0), (2, 1)]}}
     s1 = fb.StepSpec("press", 1.0, n_steps, [0.5, 1.0], mp_lc=3)
@@ -354,4 +355,59 @@ def indentation_locking_case(workdir, etype="hex8", domain=None, dom_params=None
         R = res["node_react"][-1]
         idx = np.isin(R["ids"] - 1, patch)
         out["patch_force_N"] = float(-R["data"][idx, 2].sum())
+    return out
+
+
+def restart_case(workdir, mu=0.3, kill_after_dumps=5):
+    """Restart verification: the Coulomb slide model (rigid plate, frictional
+    contact, two steps) is solved once uninterrupted, and once killed with
+    SIGKILL after `kill_after_dumps` restart points and resumed with
+    `febio4 -r`.  The resumed run must terminate normally and reproduce the
+    uninterrupted rigid-body reaction history at every common output time."""
+    import re
+    import shutil
+    import signal
+    import subprocess
+    import time
+    ref_dir, rst_dir = os.path.join(workdir, "uninterrupted"), os.path.join(workdir, "killed_resumed")
+    ref_out = contact_slide_case(ref_dir, mu=mu)
+    ref_rows = dict((round(t, 6), np.array(d[0][6:9])) for t, d in _rigid_rows(ref_dir))
+
+    orig = fb.run_febio
+    state = {}
+
+    def run_and_kill(feb, wd, **kw):
+        exe = fb.find_febio()
+        log = os.path.join(wd, "slide.log")
+        p = subprocess.Popen([exe, "-nosplash", "-silent", "-noconfig", "-i", os.path.basename(feb), "-dump", "slide.dmp"],
+                             cwd=wd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+        while p.poll() is None:
+            if os.path.exists(log) and len(re.findall("Restart point created", open(log, errors="replace").read())) >= kill_after_dumps:
+                p.send_signal(signal.SIGKILL)
+                break
+            time.sleep(0.002)
+        p.wait()
+        state["rc"] = p.returncode
+        conv = fb.parse_log(log)
+        state["killed_at"] = conv.get("last_converged_time")
+        return {"status": fb.classify(p.returncode, conv), "returncode": p.returncode}
+
+    shutil.rmtree(rst_dir, ignore_errors=True)
+    fb.run_febio = run_and_kill
+    try:
+        first = contact_slide_case(rst_dir, mu=mu)
+    finally:
+        fb.run_febio = orig
+    rst = fb.write_restart(os.path.join(rst_dir, "restart.feb"), os.path.join(rst_dir, "slide.dmp"))
+    res = fb.run_febio(os.path.join(rst_dir, "slide.feb"), rst_dir, restart=rst)
+    rows = dict((round(t, 6), np.array(d[0][6:9])) for t, d in _rigid_rows(rst_dir))
+    common = sorted(set(rows) & set(ref_rows))
+    scale = max(np.abs(np.array(list(ref_rows.values()))).max(), 1e-300)
+    diff = max((float(np.abs(rows[t] - ref_rows[t]).max()) / scale for t in common), default=float("inf"))
+    out = {"first_status": first["status"], "killed_returncode": state.get("rc"), "killed_at_time": state.get("killed_at"),
+           "restart_status": res["status"], "restart_returncode": res["returncode"],
+           "final_time": res["convergence"].get("last_converged_time"), "reference_final_time": ref_out.get("time", [None])[-1],
+           "common_output_times": len(common), "max_rel_reaction_difference": diff}
+    out["pass"] = bool(first["status"] == "interrupted" and res["status"] == "converged"
+                       and abs((out["final_time"] or 0) - 2.0) < 1e-9 and len(common) == len(ref_rows) and diff < 1e-6)
     return out
