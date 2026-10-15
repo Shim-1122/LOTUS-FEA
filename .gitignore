@@ -1,0 +1,19 @@
+!examples/synthetic/*.stl
+# run outputs and any supplied (patient-derived) geometry stay out of version control
+*.STEP
+*.aux
+*.dmp
+*.egg-info/
+*.log
+*.out
+*.step
+*.stl
+*.stp
+*.toc
+*.xplt
+.pytest_cache/
+__pycache__/
+data/private/
+private/
+runs/
+verification_runs/

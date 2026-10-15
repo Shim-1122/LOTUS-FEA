@@ -1,0 +1,58 @@
+# TEMPLATE for a supplied (private, patient-derived) limb.  Copy OUTSIDE the repository,
+# set real paths/units/roles, and never commit the copy or the geometry.
+run_name: my_limb_T75
+geometry:
+  source: files
+  patient_data: true
+  skin: {path: /PRIVATE/PATH/limb_skin.step, name: skin_envelope}      # B-rep; unit from STEP context (metre)
+  bones:
+    - {name: femur_candidate, path: /PRIVATE/PATH/bone_a.step, role: "distal femur (HEURISTIC label, unconfirmed)"}
+    - {name: patella_candidate, path: /PRIVATE/PATH/bone_b.step, role: "patella (HEURISTIC label, unconfirmed)"}
+    - {name: part4_unidentified, path: /PRIVATE/PATH/bone_c.step, role: "unidentified slender bone (identity unconfirmed)"}
+  ignored_files:
+    - {name: part1_copy_empty, path: /PRIVATE/PATH/empty_body.step, reason: "EMPTY body: STEP contains no geometry"}
+  expected_bones: [tibia, fibula]
+  alignment: {method: axes, proximal_hint: [0, 0, 1], anterior_hint: [0, -1, 0]}   # source +z is the long axis (flat proximal cut); patella lies toward source -y
+  brep_tessellation_size: 2.0
+  remesh: {skin_size: {value: 7.0, unit: mm}, bone_size: {value: 4.0, unit: mm}}
+layers:
+  skin_thickness: {value: 1.5, unit: mm}
+  fat_thickness: {value: 3.0, unit: mm}
+  skin_fiber_reference: circumferential
+  muscle_formulation: ut4
+materials:
+  set: materials/human_tissue.yaml
+  regions: {skin: skin, fat: fat, muscle: muscle, proximal_cap: muscle, silicone_pad: silicone_pad, distal_cushion: distal_cushion}
+  bones: rigid
+supports:
+  bones: {femur_candidate: fixed, patella_candidate: free, part4_unidentified: free}
+  proximal_cut: axial_roller
+load_model: resolved_contact
+socket:
+  enabled: true
+  n_petals: 6
+  gap_deg: 8
+  z_base: {value: 40, unit: mm}
+  z_top: {value: 160, unit: mm}
+  posterior_clearance_drop: {value: 25, unit: mm}
+  tip_drop: {value: 12, unit: mm}
+  pad_thickness: {value: 3.0, unit: mm}
+  shell_thickness: {value: 4.0, unit: mm}
+  initial_gap: {value: -0.1, unit: mm}
+  element_size: {value: 7.0, unit: mm}
+  cushion_thickness: {value: 6.0, unit: mm}
+  cup_thickness: {value: 4.0, unit: mm}
+  stabilizer_k: {value: 0.05, unit: N/mm}
+contact: {type: sliding-elastic, friction: 0.5, augmented_lagrangian: false, penalty_scale: 0.1}
+cable:
+  strand_tension: {value: 75, unit: N}
+  tension_is_example: true
+  rated_tension: null
+  rating_fractions: [0.25, 0.5, 0.75, 1.0]
+  guide_friction: 0.0
+  routing: default
+  route_height_fraction: 0.75
+load_cases:
+  tightening: {enabled: true}
+  pullout: {enabled: true, displacement: {value: 2.0, unit: mm}}
+solver: {n_steps: 50, max_retries: 10}

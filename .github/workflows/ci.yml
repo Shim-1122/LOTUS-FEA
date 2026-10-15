@@ -1,0 +1,31 @@
+name: ci
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  python-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.13"}
+      - run: sudo apt-get update && sudo apt-get install -y libglu1-mesa libxrender1 libxcursor1 libxft2 libxinerama1 libgl1 libosmesa6
+      - run: pip install -r requirements.lock.txt && pip install -e . --no-deps
+      - run: pytest -q -m "not febio and not slow"
+  febio-benchmarks:
+    # Builds FEBio 4.13 from source (cached) and runs the light solver benchmarks.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.13"}
+      - uses: actions/cache@v4
+        id: febio
+        with: {path: /opt/febio-4.13, key: febio-4.13-32ae206-mkl2024.2.2}
+      - if: steps.febio.outputs.cache-hit != 'true'
+        run: sudo -E env "PATH=$PATH" PREFIX=/opt/febio-4.13 MKL=/opt/mkl bash scripts/build_febio.sh
+      - run: sudo apt-get update && sudo apt-get install -y libglu1-mesa libxrender1 libxcursor1 libxft2 libxinerama1 libgl1 libosmesa6
+      - run: pip install -r requirements.lock.txt && pip install -e . --no-deps
+      - run: RLFEA_FEBIO=/opt/febio-4.13/bin/febio4 pytest -q -m febio
+      - run: RLFEA_FEBIO=/opt/febio-4.13/bin/febio4 rlfea verify --quick --out verification_runs

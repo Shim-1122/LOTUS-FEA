@@ -1,0 +1,60 @@
+# Scenario B: physical prototype (TPU/NinjaFlex soft body, optional silicone
+# skin, PETG bone inserts).  Kept completely separate from Scenario A.
+# TPU behaviour is NOT inferred from Shore hardness.
+set_name: prototype_v1
+scenario: B_physical_prototype
+references:
+  ReppelWeinberg2018:
+    citation: "Reppel T, Weinberg K. Experimental determination of elastic and rupture properties of printed Ninjaflex. Technische Mechanik. 2018;38(1):104-112."
+    doi: "10.24352/UB.OVGU-2018-010"
+  PriorPackageAssumption:
+    citation: "Supplied handoff package (silicone mu = 100 kPa listed as assumed)."
+    doi: null
+materials:
+  soft_body:
+    model: Mooney_Rivlin_uncoupled
+    febio_type: "Mooney-Rivlin"
+    region: "TPU soft body (stands in for skin+fat+muscle volumes)"
+    parameters:
+      c1: {value: 0.385, unit: MPa, source: ReppelWeinberg2018, note: "source Psi = mu1/2 (I1-3) + mu2/2 (I2-3), mu1 = 0.77 MPa -> FEBio c1 = mu1/2"}
+      c2: {value: 1.47,  unit: MPa, source: ReppelWeinberg2018, note: "mu2 = 2.94 MPa -> c2 = mu2/2"}
+      k:  {value: 371.0, unit: MPa, source: assumption, note: "source treats material as incompressible; bulk = 100 x (mu1+mu2) assumed"}
+    calibration_range: "Uniaxial tension of FDM-printed DIN EN ISO 527-2 1BA specimens (45 deg diagonal infill, 1-4 shell lines), fitted to large stretch. Infill density/pattern of YOUR prototype is not represented; compression and lattice infill need your own tests."
+    requires_user_calibration: true
+  silicone_skin:
+    model: Mooney_Rivlin_uncoupled
+    febio_type: "Mooney-Rivlin"
+    region: "optional silicone skin layer"
+    parameters:
+      c1: {value: 0.05, unit: MPa, source: PriorPackageAssumption, note: "ASSUMED"}
+      c2: {value: 0.0,  unit: MPa, source: assumption}
+      k:  {value: 10.0, unit: MPa, source: assumption}
+    calibration_range: "NONE (uncalibrated assumption)."
+    requires_user_calibration: true
+  petg_insert:
+    model: neo_Hookean_compressible
+    febio_type: "neo-Hookean"
+    region: "PETG bone inserts (used only when inserts are deformable; default rigid)"
+    parameters:
+      E: {value: 2000.0, unit: MPa, source: assumption, note: "typical PETG filament datasheet order of magnitude; verify for your filament and print orientation"}
+      v: {value: 0.38,   unit: "-", source: assumption}
+    calibration_range: "NONE (datasheet-order assumption)."
+    requires_user_calibration: true
+  silicone_pad:
+    model: Mooney_Rivlin_uncoupled
+    febio_type: "Mooney-Rivlin"
+    region: socket silicone interface
+    parameters:
+      c1: {value: 0.05, unit: MPa, source: PriorPackageAssumption}
+      c2: {value: 0.0,  unit: MPa, source: assumption}
+      k:  {value: 10.0, unit: MPa, source: assumption}
+    calibration_range: "NONE (uncalibrated assumption)."
+  distal_cushion:
+    model: Mooney_Rivlin_uncoupled
+    febio_type: "Mooney-Rivlin"
+    region: socket distal cushion
+    parameters:
+      c1: {value: 0.01, unit: MPa, source: assumption}
+      c2: {value: 0.0,  unit: MPa, source: assumption}
+      k:  {value: 2.0,  unit: MPa, source: assumption}
+    calibration_range: "NONE (uncalibrated assumption)."
