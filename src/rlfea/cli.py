@@ -9,6 +9,7 @@
     rlfea verify [--out DIR]                   analytical / benchmark verification suite
     rlfea capabilities                         FEBio availability and feature smoke tests
     rlfea gui [--runs DIR]                     interactive viewer (trame)
+    rlfea export-web RUN_DIR --out f.html      standalone shareable HTML viewer of the solved fields
 """
 from __future__ import annotations
 
@@ -39,6 +40,7 @@ def main(argv=None):
     sub.add_parser("status").add_argument("run_dir")
     v = sub.add_parser("verify"); v.add_argument("--out", default="verification_runs"); v.add_argument("--quick", action="store_true")
     sub.add_parser("capabilities")
+    w = sub.add_parser("export-web"); w.add_argument("run_dir"); w.add_argument("--out", default="viewer.html")
     g = sub.add_parser("gui"); g.add_argument("--runs", default="runs"); g.add_argument("--port", type=int, default=8080)
     args = ap.parse_args(argv)
 
@@ -82,6 +84,9 @@ def main(argv=None):
     elif args.cmd == "capabilities":
         from .solvers.capabilities import check
         print(json.dumps(check(), indent=1))
+    elif args.cmd == "export-web":
+        from .ui.web_export import export
+        print(export(args.run_dir, args.out))
     elif args.cmd == "gui":
         from .ui.app import main as gui_main
         gui_main(args.runs, args.port)

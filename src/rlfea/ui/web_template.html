@@ -1,0 +1,153 @@
+<meta charset="utf-8">
+<title>Limb Deformation Viewer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: instrument panel. 3D field view on the left, load-step controls and solver readouts on the right, notes underneath. */
+:root{
+  --bg:#f3f5f7; --panel:#ffffff; --ink:#17202a; --muted:#5b6876; --line:#d7dde3;
+  --accent:#1f6f8b; --warn:#b4401b; --ok:#2e7d4f; --canvas:#e9edf1;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11161b; --panel:#171e25; --ink:#e6ecf1; --muted:#97a5b2; --line:#2a343e;
+  --accent:#5fb3d0; --warn:#f08a5d; --ok:#6fcf97; --canvas:#0d1217; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161b; --panel:#171e25; --ink:#e6ecf1; --muted:#97a5b2; --line:#2a343e;
+  --accent:#5fb3d0; --warn:#f08a5d; --ok:#6fcf97; --canvas:#0d1217; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 28px}
+.wrap{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px}
+h1{font-family:var(--display);font-weight:700;font-size:1.55rem;letter-spacing:.01em;margin:0;text-wrap:balance}
+.pill{font-family:var(--mono);font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:3px;border:1px solid currentColor}
+.pill.ok{color:var(--ok)} .pill.bad{color:var(--warn)}
+.sub{color:var(--muted);font-size:.9rem;width:100%;margin:0}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.view{position:relative;background:var(--canvas);border:1px solid var(--line);border-radius:4px;min-height:420px;aspect-ratio:4/3.2;max-width:100%;overflow:hidden}
+.view canvas{display:block;width:100%;height:100%}
+.scale-tag{position:absolute;left:10px;top:10px;font-family:var(--mono);font-size:.78rem;padding:3px 7px;background:var(--panel);border:1px solid var(--line);border-radius:3px}
+.scale-tag.ex{color:var(--warn);border-color:var(--warn);font-weight:600}
+.bar{position:absolute;right:10px;bottom:10px;left:10px;display:flex;flex-direction:column;gap:3px;font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.bar .ramp{height:9px;border-radius:2px;border:1px solid var(--line)}
+.bar .ends{display:flex;justify-content:space-between}
+aside{display:flex;flex-direction:column;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:14px;min-width:0}
+label,.lab{font-size:.72rem;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.ctl{display:flex;flex-direction:column;gap:6px}
+select,input[type=range]{width:100%;font:inherit;color:var(--ink)}
+select{background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:5px}
+.seg{display:flex;gap:4px;flex-wrap:wrap}
+.seg button{font-family:var(--mono);font-size:.8rem;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:3px;padding:4px 9px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.step{font-family:var(--mono);font-size:.85rem}
+.checks{display:flex;gap:14px;flex-wrap:wrap;font-size:.9rem}
+dl{display:grid;grid-template-columns:1fr auto;gap:4px 10px;margin:0;font-size:.88rem}
+dt{color:var(--muted)} dd{margin:0;font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.notes{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:14px 18px}
+.notes h2{font-family:var(--display);font-size:1.05rem;margin:0 0 6px}
+.notes ul{margin:0;padding-left:18px;color:var(--muted);font-size:.9rem;max-width:80ch}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<div class="wrap">
+  <header>
+    <h1 id="title">Limb deformation</h1>
+    <span id="state" class="pill"></span>
+    <p class="sub" id="sub"></p>
+  </header>
+  <div class="grid">
+    <div class="view" id="view">
+      <div class="scale-tag" id="scaleTag">Deformation scale 1x (true)</div>
+      <div class="bar"><div class="ramp" id="ramp"></div><div class="ends"><span id="lo"></span><span id="fieldName"></span><span id="hi"></span></div></div>
+    </div>
+    <aside>
+      <div class="ctl"><label for="t">Output time / load</label><input id="t" type="range" min="0" max="0" step="1" value="0"><div class="step" id="tlabel"></div></div>
+      <div class="ctl"><label for="field">Field on skin</label>
+        <select id="field">
+          <option value="u">Displacement magnitude |u| (mm), nodal</option>
+          <option value="p">Contact pressure (kPa), per facet</option>
+          <option value="tt">Tangential traction (kPa), per facet</option>
+          <option value="ss">Stick / slip (derived), per facet</option>
+        </select></div>
+      <div class="ctl"><span class="lab">Deformation scale</span>
+        <div class="seg" id="scales"><button aria-pressed="true" data-s="1">1x true</button><button aria-pressed="false" data-s="3">3x</button><button aria-pressed="false" data-s="5">5x</button></div></div>
+      <div class="checks"><label style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink)"><input id="bones" type="checkbox" checked> Bones</label>
+        <label style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink)"><input id="sock" type="checkbox"> Socket shells</label>
+        <label style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink)"><input id="skinop" type="checkbox"> See-through skin</label></div>
+      <div class="ctl"><span class="lab">Solver readouts at this time</span><dl id="ro"></dl></div>
+    </aside>
+  </div>
+  <section class="notes">
+    <h2>How to read this</h2>
+    <ul id="notes"></ul>
+  </section>
+</div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import {OrbitControls} from "three/addons/controls/OrbitControls.js";
+const D=/*__DATA__*/null;
+const $=id=>document.getElementById(id);
+$("title").textContent=(D.synthetic?"Synthetic limb · ":"")+D.run_name;
+const st=$("state"); st.textContent=D.state; st.className="pill "+(D.state==="converged"?"ok":"bad");
+$("sub").textContent=`FEBio ${D.febio} · run ${D.run_id}`+(D.state!=="converged"?` · last accepted time ${D.last_converged_time}`:"")+` · friction ${D.friction}`;
+const notes=["Every colour is an actual FEBio output at the selected output time. Nodal displacements are drawn at the nodes; contact quantities are drawn flat per facet with no smoothing.",
+ "Peak contact pressures change with mesh density and are not injury predictions. Stick/slip is derived from logged tractions (|t_t| ≥ 0.98 μp means slip).",
+ "Numerical verification only. The socket is a provisional parametric model and the 75 N lace tension is an example, not a RevoFit rating."].concat(D.warnings.slice(0,4));
+$("notes").innerHTML=notes.map(n=>`<li>${n.replace(/</g,"&lt;")}</li>`).join("");
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const view=$("view"); const renderer=new THREE.WebGLRenderer({antialias:true}); view.prepend(renderer.domElement);
+const scene=new THREE.Scene(); const cam=new THREE.PerspectiveCamera(32,1,1,5000);
+scene.add(new THREE.HemisphereLight(0xffffff,0x667788,1.6)); const dl=new THREE.DirectionalLight(0xffffff,1.4); dl.position.set(200,-300,400); scene.add(dl);
+const X0=Float32Array.from(D.x0); const N=X0.length/3;
+// limb frame: z proximal -> show z up
+const root=new THREE.Group(); root.rotation.x=-Math.PI/2; scene.add(root);
+function triGeom(idx){const g=new THREE.BufferGeometry(); g.setAttribute("position",new THREE.BufferAttribute(new Float32Array(idx.length*3),3)); g.setAttribute("color",new THREE.BufferAttribute(new Float32Array(idx.length*3),3)); g.userData.idx=idx; return g;}
+const skinG=triGeom(D.skin), boneG=triGeom(D.bone), sockG=triGeom(D.socket);
+const skin=new THREE.Mesh(skinG,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.75,side:THREE.DoubleSide,flatShading:true}));
+const bone=new THREE.Mesh(boneG,new THREE.MeshStandardMaterial({color:0xece6d6,roughness:.6}));
+const sock=new THREE.Mesh(sockG,new THREE.MeshStandardMaterial({color:0x50667a,transparent:true,opacity:.22,depthWrite:false,side:THREE.DoubleSide}));
+root.add(bone,skin,sock); sock.visible=false;
+const ctr=new THREE.Vector3(); {let mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9]; for(let i=0;i<N;i++)for(let k=0;k<3;k++){mn[k]=Math.min(mn[k],X0[3*i+k]);mx[k]=Math.max(mx[k],X0[3*i+k]);} ctr.set((mn[0]+mx[0])/2,(mn[2]+mx[2])/2,-(mn[1]+mx[1])/2); var R=Math.max(mx[0]-mn[0],mx[1]-mn[1],mx[2]-mn[2]);}
+cam.position.set(ctr.x+R*1.3,ctr.y+R*0.35,ctr.z+R*1.6); const oc=new OrbitControls(cam,renderer.domElement); oc.target.copy(ctr); oc.update();
+const viridis=[[68,1,84],[72,40,120],[62,74,137],[49,104,142],[38,130,142],[31,158,137],[53,183,121],[109,205,89],[180,222,44],[253,231,37]];
+const inferno=[[0,0,4],[31,12,72],[85,15,109],[136,34,106],[186,54,85],[227,89,51],[249,140,10],[249,201,50],[252,255,164]];
+function cmap(t,P){t=Math.min(1,Math.max(0,t));const x=t*(P.length-1),i=Math.min(P.length-2,Math.floor(x)),f=x-i;return P[i].map((a,k)=>(a+(P[i+1][k]-a)*f)/255);}
+const SS=[[0.55,0.59,0.63],[0.18,0.49,0.31],[0.85,0.33,0.12]];
+let ti=0, sc=1;
+const sl=$("t"); sl.max=D.states.length-1; sl.value=sl.max; ti=+sl.value;
+function setPos(g,U){const idx=g.userData.idx,p=g.attributes.position.array;for(let j=0;j<idx.length;j++){const n=idx[j];for(let k=0;k<3;k++)p[3*j+k]=X0[3*n+k]+sc*U[3*n+k];}g.attributes.position.needsUpdate=true;g.computeVertexNormals();}
+function pct(arr,q){const a=arr.filter(v=>v>0).sort((x,y)=>x-y);return a.length?a[Math.floor(q*(a.length-1))]:1;}
+function draw(){
+  const S=D.states[ti]; const U=S.u;
+  setPos(skinG,U); setPos(boneG,U); setPos(sockG,U);
+  const f=$("field").value, col=skinG.attributes.color.array, idx=D.skin; let lo=0,hi=1,name="";
+  if(f==="u"){let m=0;for(let n=0;n<N;n++)m=Math.max(m,Math.hypot(U[3*n],U[3*n+1],U[3*n+2])); hi=m||1; name="|u| mm";
+    for(let j=0;j<idx.length;j++){const n=idx[j];const c=cmap(Math.hypot(U[3*n],U[3*n+1],U[3*n+2])/hi,viridis);col.set(c,3*j);} $("ramp").style.background=`linear-gradient(90deg,${viridis.map(c=>`rgb(${c})`).join(",")})`;}
+  else{const arr=S[f]||[]; const nf=idx.length/3; name=f==="ss"?"0 open · 1 stick · 2 slip":(f==="p"?"pressure kPa":"tangential kPa");
+    hi=f==="ss"?2:pct(arr,0.995);
+    for(let t=0;t<nf;t++){const v=t<arr.length?arr[t]:0; const c=f==="ss"?SS[t<arr.length?v:0]:cmap(v/hi,inferno); for(let k=0;k<3;k++)col.set(c,9*t+3*k);}
+    $("ramp").style.background=f==="ss"?`linear-gradient(90deg,rgb(140,150,160) 0 33%,rgb(46,125,79) 33% 66%,rgb(217,84,31) 66%)`:`linear-gradient(90deg,${inferno.map(c=>`rgb(${c})`).join(",")})`;}
+  skinG.attributes.color.needsUpdate=true;
+  $("lo").textContent=lo.toFixed(f==="ss"?0:2); $("hi").textContent=(f==="ss"?"2":hi.toFixed(2))+((f==="p"||f==="tt")?" (99.5th pct)":""); $("fieldName").textContent=name;
+  $("tlabel").textContent=`t = ${S.t} · ${S.label}`;
+  const fmt=(v,d)=>v==null?"–":(+v).toFixed(d);
+  $("ro").innerHTML=[["Max tissue |u|",fmt(S.umax,2)+" mm"],["Min J (volume ratio)",fmt(S.minJ,3)],["Contact normal force",fmt(S.N,1)+" N"],["Max contact pressure",fmt(S.pmax,1)+" kPa"],["Slip area fraction",fmt(S.slip,3)],["Cup axial constraint force",fmt(S.cupFz,2)+" N"],["Global force imbalance",S.imb==null?"–":S.imb.toExponential(1)]].map(r=>`<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join("");
+  const tag=$("scaleTag"); tag.textContent=sc===1?"Deformation scale 1x (true)":`EXAGGERATED deformation x${sc}`; tag.className="scale-tag"+(sc===1?"":" ex");
+}
+sl.addEventListener("input",()=>{ti=+sl.value;draw();});
+$("field").addEventListener("change",draw);
+document.querySelectorAll("#scales button").forEach(b=>b.addEventListener("click",()=>{sc=+b.dataset.s;document.querySelectorAll("#scales button").forEach(x=>x.setAttribute("aria-pressed",x===b));draw();}));
+$("bones").addEventListener("change",e=>{bone.visible=e.target.checked;});
+$("sock").addEventListener("change",e=>{sock.visible=e.target.checked;});
+$("skinop").addEventListener("change",e=>{skin.material.transparent=e.target.checked;skin.material.opacity=e.target.checked?0.35:1;skin.material.depthWrite=!e.target.checked;skin.material.needsUpdate=true;});
+function resize(){const w=view.clientWidth,h=view.clientHeight;renderer.setSize(w,h,false);renderer.setPixelRatio(Math.min(2,devicePixelRatio));cam.aspect=w/h;cam.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(view);
+function bg(){scene.background=new THREE.Color(css("--canvas")||"#e9edf1");}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",bg); new MutationObserver(bg).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+bg(); resize(); draw();
+renderer.setAnimationLoop(()=>{oc.update();renderer.render(scene,cam);});
+</script>

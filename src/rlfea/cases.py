@@ -359,7 +359,9 @@ def _assemble(cfg, model, mset, traction_model=None):
                    "reform_each_time_step": 1}
     spec.time_stepper = {"dtmin": sol["dtmin"], "dtmax": 0.25, "max_retries": sol["max_retries"], "opt_iter": sol["opt_iter"]}
     fr = cb["rating_fractions"]
-    mp1 = sorted(set([round(f, 6) for f in fr] + [1.0]))
+    # must points: requested load fractions plus every 5% so that a failed run
+    # always has a written state within 5% of its last accepted increment
+    mp1 = sorted(set([round(f, 6) for f in fr] + [round(0.05 * k, 6) for k in range(1, 21)]))
     st1 = StepSpec("tightening", 1.0, sol["n_steps"], mp1)
     if S.get("enabled") and traction_model is None:
         st1.rigid_bcs.append({"type": "rigid_fixed", "rb": "rigid_cup", "dofs": ["Rz"], "name": "cup_axial_hold"})
@@ -373,7 +375,7 @@ def _assemble(cfg, model, mset, traction_model=None):
     if second:
         k = second[0]
         spec.load_curves[2] = {"name": k, "points": [(1.0, 0.0), (2.0, 1.0)]}
-        st2 = StepSpec(k, 1.0, sol.get("n_steps_case2", sol["n_steps"]), [1.25, 1.5, 1.75, 2.0])
+        st2 = StepSpec(k, 1.0, sol.get("n_steps_case2", sol["n_steps"]), [round(1.0 + 0.1 * i, 6) for i in range(1, 11)])
         if k in ("pullout", "body_weight"):
             d = lcs[k]["displacement"] * (-1 if k == "pullout" else 1)
             st2.rigid_bcs.append({"type": "rigid_displacement", "rb": "rigid_cup", "dof": "z", "value": d, "lc": 2,

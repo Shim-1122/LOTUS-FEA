@@ -1,0 +1,57 @@
+# MESH-REFINEMENT companion of synthetic_human.yaml (finer skin/bone/socket mesh). Scenario A.
+# SYNTHETIC GEOMETRY - not patient data.  Layer thicknesses, socket geometry
+# and cable routing are labelled assumptions.
+run_name: synthetic_human_medium_T75
+geometry:
+  source: synthetic
+  synthetic: {length: {value: 200, unit: mm}}
+  remesh: {skin_size: {value: 6.0, unit: mm}, bone_size: {value: 4.0, unit: mm}}
+  expected_bones: [tibia, fibula]
+layers:
+  skin_thickness: {value: 1.5, unit: mm}     # assumption
+  fat_thickness: {value: 3.0, unit: mm}      # "minimal" subcutaneous fat, assumption
+  skin_fiber_reference: circumferential      # Langer-line mapping assumption
+  muscle_formulation: ut4
+materials:
+  set: materials/human_tissue.yaml
+  regions: {skin: skin, fat: fat, muscle: muscle, proximal_cap: muscle,
+            silicone_pad: silicone_pad, distal_cushion: distal_cushion}
+  bones: rigid
+supports:
+  bones: {tibia: fixed, fibula: free}        # tibia = knee reference; fibula embedded in tissue
+  proximal_cut: axial_roller                 # tissue at the artificial proximal cut: u_z = 0 only
+load_model: resolved_contact                 # or prescribed_traction (labelled experiment)
+socket:
+  enabled: true
+  n_petals: 6
+  gap_deg: 8
+  z_base: {value: 40, unit: mm}
+  z_top: {value: 150, unit: mm}
+  posterior_clearance_drop: {value: 25, unit: mm}
+  tip_drop: {value: 12, unit: mm}
+  pad_thickness: {value: 3.0, unit: mm}
+  shell_thickness: {value: 4.0, unit: mm}
+  initial_gap: {value: -0.1, unit: mm}   # snug-fit interference (assumption); negative = overlap resolved in the first increment
+  element_size: {value: 6.0, unit: mm}
+  cushion_thickness: {value: 6.0, unit: mm}
+  cup_thickness: {value: 4.0, unit: mm}
+  stabilizer_k: {value: 0.05, unit: N/mm}
+contact:
+  type: sliding-elastic
+  friction: 0.5                # screening assumption
+  augmented_lagrangian: false
+  penalty_scale: 0.1            # scale on FEBio auto-penalty; penetration is reported (see contact checks)
+cable:
+  strand_tension: {value: 75, unit: N}
+  tension_is_example: true
+  rated_tension: null          # supply {value, unit, source, meaning: strand_tension} to enable rated cases
+  rating_fractions: [0.25, 0.5, 0.75, 1.0]
+  guide_friction: 0.0
+  routing: default
+  route_height_fraction: 0.75
+load_cases:
+  tightening: {enabled: true}
+  pullout: {enabled: true, displacement: {value: 2.0, unit: mm}}
+solver:
+  n_steps: 50                  # initial step 0.02 of each load step (auto-stepping adapts)
+  max_retries: 10
