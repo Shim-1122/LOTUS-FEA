@@ -71,6 +71,13 @@ represents the real limb). No validation has been performed.
   and displacement criteria were met. The setting is recorded in every
   run's resolved configuration.
 * Penalty contact (scale 0.1 on FEBio's auto-penalty) leaves up to about
-  1 mm of penetration at 75 N on the synthetic model. That is a
-  regularisation error on the same order as the 3 mm pad thickness, and it
-  is quantified by the augmented-Lagrangian sensitivity run.
+  1 mm of penetration at 75 N on the synthetic model, which is on the order
+  of the 3 mm pad thickness. In the augmented-Lagrangian sensitivity run at
+  26 N, penetration fell from 0.42 to 0.08 mm and peak contact pressure rose
+  by 60%. Penalty peak pressures are therefore underestimates. The
+  augmented-Lagrangian run did not reach 75 N (it stalled at the minimum
+  step), so no penalty-free 75 N result exists.
+* Pull-out on the supplied geometry did not converge: Newton iterations
+  entered a frictional stick/slip limit cycle at the first increment. The
+  synthetic pull-out converged. Frictionless contact did not converge past
+  about 49 N on the synthetic model.

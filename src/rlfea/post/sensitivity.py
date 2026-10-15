@@ -6,7 +6,7 @@ import os
 
 import numpy as np
 
-METRICS = [("max_tissue_displacement_mm", "max tissue |u| [mm]"),
+METRICS = [("max_tissue_displacement_mm", "max tissue displacement [mm]"),
            ("contact.max_pressure_MPa", "max contact pressure [MPa]"),
            ("contact.normal_force_N", "total contact normal force [N]"),
            ("contact.slip_fraction_of_contact_area", "slip area fraction [-]"),

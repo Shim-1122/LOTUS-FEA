@@ -129,9 +129,28 @@ your infill.
   push), bending or torsion (prescribed cup rotation). Suction requires a
   justified pressure and a sealing assumption.
 
+## Verification
+
+`rlfea verify` runs 47 checks against analytical or independently computed
+references. Each check exercises the same FEBio adapter that is used for the
+limb. The checks cover:
+
+* HGO, Ogden and Mooney-Rivlin stresses vs an independent strain-energy
+  implementation, in tension, compression, shear, volumetric and rotated
+  stretch, plus rigid rotation.
+* Coulomb sliding, contact opening, the rigid hinge, cable force and moment
+  balance, and the energy balance.
+* Restart after SIGKILL.
+* Near-incompressible locking (indentation at k = 100 mu): standard tet4 is
+  expected to lock and does; ut4 and tet10 must be within 10% of the
+  three-field hex8 result at the same mesh density.
+
+`pytest` runs the unit tests, plus the FEBio benchmarks when `febio4` is
+available.
+
 ## Results
 
-The current status is recorded in [docs/RESULTS.md](docs/RESULTS.md),
+The current status is recorded in [docs/RESULTS.md](docs/RESULTS.md) (the full synthetic-run report is [docs/synthetic_report.pdf](docs/synthetic_report.pdf)),
 generated from the run directories.
 
 ## License
