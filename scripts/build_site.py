@@ -28,6 +28,24 @@ def _state_at(states, t):
     return c[0] if c else None
 
 
+def _distortion(run, summ) -> str:
+    """List item naming strongly compressed elements at the end of tightening."""
+    import numpy as np
+    import pyvista as pv
+    d = (_state_at(summ["states"], 1.0) or {}).get("deformation", {})
+    if not d.get("excessive_distortion_flag"):
+        return ""
+    g = pv.read(os.path.join(run, "results", "volume_t1.0000.vtu"))
+    J = np.asarray(g.cell_data["J"])
+    n = int((J < 0.8).sum())
+    z = g.cell_centers().points[J < 0.8, 2]
+    return (f"<li>At 75 N, {n} of {len(J)} elements ({100 * n / len(J):.2f}%) have a volume ratio J below 0.8 "
+            f"(lowest {J.min():.2f}). They sit in one small patch of muscle, {z.min():.0f} to {z.max():.0f} mm "
+            f"above the distal end. "
+            f"Near-incompressible muscle should barely change volume, so treat that spot as a mesh-quality "
+            f"or local-loading question, not a result.</li>")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", required=True)
@@ -94,6 +112,7 @@ def main():
         dev_fat=f"{lay.get('offset_vs_segmentation_mm', {}).get('fat_inner', {}).get('median', float('nan')):.2f}",
         fb_resid=f"{100 * max(fb):.2f}" if fb else "n/a",
         pullout_note=html.escape(pull),
+        distortion_note=_distortion(run, summ),
         run_id=html.escape(man["run_id"]),
         commit=html.escape(str(man.get("repository", {}).get("commit", "?"))[:10]),
         generated=dt.date.today().isoformat())

@@ -71,7 +71,7 @@ represents the real limb). No validation has been performed.
   uninterrupted one. Dump files from an unpatched build cannot be resumed by
   the patched build.
 * Energy convergence tolerance: the synthetic runs use `etol = 1e-3`. The
-  supplied-limb run uses FEBio's default `etol = 0.01`, because with `1e-3`
+  knee and earlier supplied-limb runs use FEBio's default `etol = 0.01`, because with `1e-3`
   full Newton entered a friction stick/slip two-cycle at 48 N. That cycle
   kept the energy norm just above the 1e-3 tolerance, although the residual
   and displacement criteria were met. The setting is recorded in every
@@ -83,7 +83,12 @@ represents the real limb). No validation has been performed.
   by 60%. Penalty peak pressures are therefore underestimates. The
   augmented-Lagrangian run did not reach 75 N (it stalled at the minimum
   step), so no penalty-free 75 N result exists.
-* Pull-out on the supplied geometry did not converge: Newton iterations
+* Pull-out on the earlier STEP geometry (no tibia, assumed layers) did not converge; on the segmented knee model it converged: Newton iterations
   entered a frictional stick/slip limit cycle at the first increment. The
   synthetic pull-out converged. Frictionless contact did not converge past
   about 49 N on the synthetic model.
+* Knee model at 75 N: 15 of 58,600 elements (0.03%) have a volume ratio J
+  below 0.8 (lowest 0.68, falling to 0.58 by the end of pull-out). They sit
+  in one small patch of muscle, 126 to 154 mm above the distal end. Muscle
+  is nearly incompressible, so this is flagged as a possible mesh or
+  local-loading artefact rather than reported as a result.
