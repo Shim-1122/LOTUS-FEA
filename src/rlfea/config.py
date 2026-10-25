@@ -90,7 +90,17 @@ def resolve(raw: dict) -> tuple[dict, list[str]]:
         g.setdefault("synthetic", {})
         g["synthetic"]["length"] = quantity(g["synthetic"].get("length", {"value": 200, "unit": "mm"}), "length")
     else:
-        for b in [g["skin"]] + g.get("bones", []) + g.get("ignored_files", []):
+        seg = g.get("segmented_layers") or {}
+        for k in seg:
+            if k not in ("skin_inner", "fat_inner", "note"):
+                raise ConfigError(f"geometry.segmented_layers.{k}: allowed keys are skin_inner, fat_inner, note")
+        if seg and not ("skin_inner" in seg and "fat_inner" in seg):
+            raise ConfigError("geometry.segmented_layers needs both skin_inner and fat_inner")
+        if seg:
+            warn.append("Layer thicknesses are measured from a supplied segmentation whose provenance and accuracy "
+                        "are not verified by this software.")
+        for b in [g["skin"]] + g.get("bones", []) + g.get("ignored_files", []) + \
+                [v for k, v in seg.items() if k != "note"]:
             b["path"] = b["path"] if os.path.isabs(b["path"]) else os.path.normpath(os.path.join(base, b["path"]))
             if not os.path.exists(b["path"]):
                 raise ConfigError(f"geometry file not found: {b['path']}")

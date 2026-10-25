@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Knee FEA</title>
+<meta name="description" content="Full residual-limb finite element analysis of a below-knee limb in an adjustable petal socket (FEBio 4.13).">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Report-sheet layout: a lab notebook page. Header with run state, a row of
+   measured numbers, the full-limb figure, then what was checked and what is
+   still unknown. Same palette as the 3D viewer so the two read as one tool. */
+:root{
+  --bg:#f3f5f7; --panel:#ffffff; --ink:#17202a; --muted:#5b6876; --line:#d7dde3;
+  --accent:#1f6f8b; --warn:#b4401b; --ok:#2e7d4f;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11161b; --panel:#171e25; --ink:#e6ecf1; --muted:#97a5b2; --line:#2a343e;
+  --accent:#5fb3d0; --warn:#f08a5d; --ok:#6fcf97; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161b; --panel:#171e25; --ink:#e6ecf1; --muted:#97a5b2; --line:#2a343e;
+  --accent:#5fb3d0; --warn:#f08a5d; --ok:#6fcf97; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 40px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--line);padding-bottom:18px}
+.kicker{font-family:var(--mono);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(1.8rem,4vw,2.6rem);margin:0;letter-spacing:.005em;text-wrap:balance}
+h2{font-family:var(--display);font-weight:700;font-size:1.2rem;margin:0 0 10px;text-wrap:balance}
+p{margin:0;max-width:68ch}
+.lead{font-size:1.08rem;color:var(--ink)}
+.muted{color:var(--muted)}
+.pill{display:inline-block;font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:3px;border:1px solid currentColor;vertical-align:middle}
+.pill.ok{color:var(--ok)} .pill.bad{color:var(--warn)}
+.links{display:flex;flex-wrap:wrap;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:6px;font-weight:600;text-decoration:none;color:var(--panel);background:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:8px 14px}
+.btn.alt{background:transparent;color:var(--accent)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat .v{font-family:var(--mono);font-size:1.45rem;font-variant-numeric:tabular-nums}
+.stat .k{font-size:.74rem;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.stat .n{font-size:.85rem;color:var(--muted)}
+figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:12px;display:flex;flex-direction:column;gap:8px}
+figure img{width:100%;height:auto;display:block;border-radius:2px;background:#fff}
+figcaption{font-size:.88rem;color:var(--muted);max-width:90ch}
+.stack{display:flex;flex-direction:column;gap:18px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:16px 18px;min-width:0}
+ul{margin:0;padding-left:18px} li{margin:3px 0}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:.92rem}
+td{white-space:nowrap}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+code{font-family:var(--mono);font-size:.88em}
+pre{font-family:var(--mono);font-size:.85rem;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:12px;overflow-x:auto;margin:0}
+footer{border-top:1px solid var(--line);padding-top:14px;font-size:.85rem;color:var(--muted)}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="kicker">Senior design &middot; nighttime transtibial prosthesis &middot; FEBio $febio_version</span>
+    <h1>Knee FEA</h1>
+    <p class="lead">This is a full finite element model of a below-knee residual limb, with skin, fat, muscle and four bones, squeezed by an adjustable petal socket. The run below tightened the lace to the 75 N example tension and then pulled the socket 2&nbsp;mm off the limb. <span class="pill $state_class">$state_label</span></p>
+    <div class="links">
+      <a class="btn" href="viewer.html">Open the 3D viewer</a>
+      <a class="btn alt" href="report.pdf">Full run report (PDF)</a>
+      <a class="btn alt" href="$repo_url">Source code and data</a>
+    </div>
+  </header>
+
+  <section>
+    <h2>At the 75 N example lace tension</h2>
+    <div class="stats">$stats</div>
+    <p class="muted" style="margin-top:10px">These are numbers from one model. They are not clinical limits or injury thresholds. Peak contact pressure depends on the mesh, and the penalty contact method underestimates it; see the limitations below.</p>
+  </section>
+
+  <figure>
+    <img src="figures/full_limb_1x.png" alt="Undeformed and deformed full limb inside the petal socket, with a sagittal section coloured by displacement magnitude in millimetres, at the 75 N example tension, 1x scale.">
+    <figcaption>The limb before and after tightening, at true (1x) scale, with a sagittal section coloured by displacement magnitude (mm). These are the solver's own element fields, with no smoothing.</figcaption>
+  </figure>
+
+  <div class="stack">
+    <figure>
+      <img src="figures/contact.png" alt="Skin contact maps: contact pressure, tangential traction, stick or slip status, and gap.">
+      <figcaption>Skin contact: pressure, tangential traction, stick or slip (FEBio's stick flag) and gap, all read from the plot file.</figcaption>
+    </figure>
+    <figure>
+      <img src="figures/sections.png" alt="Section views of strain and stress through the limb.">
+      <figcaption>Sections through the limb showing strain and stress fields by tissue.</figcaption>
+    </figure>
+  </div>
+
+  <section class="card">
+    <h2>Load history</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Step</th><th>Load</th><th>Max tissue displacement (mm)</th><th>Peak contact pressure (kPa)</th><th>Contact force (N)</th><th>Min J</th><th>Force imbalance</th></tr></thead>
+      <tbody>$rows</tbody>
+    </table></div>
+    <p class="muted" style="margin-top:8px">J is the local volume ratio (1 means no change). Force imbalance is the residual of the global force balance divided by the largest force.</p>
+  </section>
+
+  <div class="cols">
+    <section class="card">
+      <h2>What was checked</h2>
+      <ul>
+        <li>$verification_pass of $verification_total verification checks pass. They compare the solver's material, contact, hinge, cable, energy, restart and locking behaviour against analytical or independently computed results.</li>
+        <li>Skin and fat thickness are measured from the segmented surfaces at every skin vertex, with a median mesh deviation of $dev_skin&nbsp;mm (inner skin) and $dev_fat&nbsp;mm (inner fat).</li>
+        <li>Each socket petal's free body (lace, hinge, stabiliser and pad contact) balances to within $fb_resid% of the lace force.</li>
+      </ul>
+    </section>
+    <section class="card">
+      <h2>What it does not tell us</h2>
+      <ul>
+        <li>No clinical validation has been done, so a converged run does not show grip, comfort or safety.</li>
+        <li>The bone labels (tibia, femur, patella, fibula) are heuristic, and nobody has verified where the segmentation came from.</li>
+        <li>The socket is a parametric stand-in, and 75&nbsp;N is an example tension, not a RevoFit rating.</li>
+        <li>Silicone, cushion and TPU properties are assumptions. Tissue stiffness is the largest single uncertainty: in the synthetic sensitivity study, doubling or halving it changed peak displacement by &minus;31% or +47%.</li>
+        <li>$pullout_note</li>
+      </ul>
+    </section>
+  </div>
+
+  <section>
+    <h2>Run it yourself</h2>
+    <pre>git clone $repo_url.git
+cd knee-fea
+sudo bash scripts/build_febio.sh
+pip install -r requirements.lock.txt &amp;&amp; pip install -e . --no-deps
+rlfea verify
+rlfea run configs/knee_limb_segmented.yaml --runs runs</pre>
+  </section>
+
+  <footer>Run <code>$run_id</code> &middot; commit <code>$commit</code> &middot; generated $generated &middot; MIT licence</footer>
+</div>
+</body>
+</html>

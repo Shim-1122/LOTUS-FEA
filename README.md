@@ -1,10 +1,15 @@
-# residual-limb-fea
+# Knee FEA
 
-This toolkit runs full residual-limb finite element analysis for an adjustable
-transtibial petal socket. It covers geometry audit, conforming layered
-skin/fat/muscle/bone meshing, nonlinear frictional-contact solves in
-**FEBio 4.13**, solver-field visualisation (static figures, VTK/ParaView and
-an interactive browser viewer) and reproducible LaTeX reports.
+Knee FEA runs full residual-limb finite element analysis of a transtibial
+(below-knee) limb inside an adjustable petal socket. It was built for a
+senior design project on a nighttime prosthesis. It covers:
+
+- geometry audit;
+- conforming skin, fat, muscle and bone meshing;
+- nonlinear frictional-contact solves in **FEBio 4.13**;
+- solver-field visualisation: static figures, VTK/ParaView and an
+  interactive browser viewer;
+- reproducible LaTeX reports.
 
 > **Scope.** The results are *numerical*. Verification (the equations are
 > solved correctly) is kept separate from validation (the model represents a
@@ -12,9 +17,19 @@ an interactive browser viewer) and reproducible LaTeX reports.
 > does not establish grip, comfort or tissue safety. See
 > [LIMITATIONS.md](LIMITATIONS.md).
 
-The repository contains **no patient geometry**. The bundled example is a
-synthetic limb (`rlfea.geometry.synthetic`). Supplied scans or CAD stay in a
-private directory referenced by a private configuration file.
+## What's in the repository
+
+* `data/limb/` holds the segmented limb geometry as STL files in mm: skin
+  (outer and inner shells), fat, muscle and four bones. The owner chose to
+  publish this geometry. See [data/limb/README.md](data/limb/README.md) for
+  the inventory, hashes and bone labels.
+* `configs/knee_limb_segmented.yaml` is the main model. Skin and fat
+  thickness are **measured** at every skin vertex from the segmented inner
+  surfaces, and the four bones include a candidate tibia and fibula.
+* `configs/synthetic_human.yaml` is a fully synthetic limb used for
+  verification and for the sensitivity study.
+* `site/` is a static website (results page, 3D viewer and report) that is
+  ready for Vercel (`vercel.json`).
 
 ## Pipeline
 
@@ -22,7 +37,8 @@ private directory referenced by a private configuration file.
 geometry (STEP B-rep | STEP AP242 tessellated | STL/OBJ/PLY)  -- immutable source, SHA-256 recorded
   -> audit (units, bbox, closure, components, orientation, self-intersection, containment, empty bodies)
   -> logged repairs/transforms (before/after audit per operation)
-  -> layered conforming mesh: skin + fat wedges (penta6, three-field) offset from the skin,
+  -> layered conforming mesh: skin + fat wedges (penta6, three-field) offset from the skin
+     (thickness measured per vertex from segmented surfaces, or assumed when none are given),
      muscle tetrahedra (UT4) to the bone surfaces, bone tetrahedra (rigid or deformable)
   -> provisional parametric petal socket: rigid petals + silicone pads (hex8), revolute hinges,
      rigid distal cup + cushion; lace routing -> guide forces -> petal force/moment
@@ -45,7 +61,7 @@ pip install -r requirements.lock.txt && pip install -e . --no-deps
 # sudo apt-get install libglu1-mesa libgl1 libosmesa6 libxrender1 libxcursor1 libxft2 libxinerama1
 ```
 
-Alternatively, run `docker build -t rlfea .` for a complete pinned environment
+Alternatively, run `docker build -t knee-fea .` for a complete pinned environment
 (FEBio, Python and TeX).
 
 ## End-to-end commands
@@ -53,7 +69,8 @@ Alternatively, run `docker build -t rlfea .` for a complete pinned environment
 ```bash
 rlfea capabilities                                  # FEBio found? every required feature exercised
 rlfea verify --out verification_runs                # analytical / independent-reference benchmarks
-rlfea run configs/synthetic_human.yaml --runs runs  # synthetic full limb: tightening (75 N example) + pull-out
+rlfea run configs/knee_limb_segmented.yaml --runs runs  # segmented limb: tightening (75 N example) + pull-out
+rlfea run configs/synthetic_human.yaml --runs runs  # synthetic full limb: same load case
 rlfea status runs/<run_id>                          # prepared | running | converged | failed | interrupted
 rlfea post runs/<run_id>                            # re-derive fields, VTK, figures, report from raw output
 rlfea solve runs/<run_id> --restart runs/<run_id>/solver/model.dmp [--set etol=0.01]
@@ -63,7 +80,9 @@ rlfea audit path/to/limb.step path/to/bone.step     # geometry audit only (no mo
 pytest -q                                           # unit tests (+ FEBio benchmarks when febio4 is available)
 ```
 
-### Your own (private) geometry
+### Other geometry
+
+To run different geometry, keep private scans out of public repositories.
 
 1. Copy `configs/supplied_limb_template.yaml` to a private folder and fill in
    the file paths, units (required for STL/OBJ/PLY), the bone roles you have

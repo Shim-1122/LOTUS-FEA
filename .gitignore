@@ -1,5 +1,4 @@
-!examples/synthetic/*.stl
-# run outputs and any supplied (patient-derived) geometry stay out of version control
+# run outputs stay out of version control; data/limb/*.stl is published by the owner's decision
 *.STEP
 *.aux
 *.dmp
@@ -17,3 +16,5 @@ data/private/
 private/
 runs/
 verification_runs/
+!examples/synthetic/*.stl
+!data/limb/*.stl

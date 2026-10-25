@@ -26,6 +26,7 @@ from .solvers.febio import AnalysisSpec, StepSpec
 def prepare_geometry(cfg: dict) -> dict:
     g = cfg["geometry"]
     out = {"audit_source": {}, "audit_prepared": {}, "missing_anatomy": [], "roles": {}, "notes": []}
+    layers = {}
     if g["source"] == "synthetic":
         bodies = synthetic_limb(length=g["synthetic"]["length"])
         skin = R.basic_cleanup(bodies.pop("skin"))
@@ -41,6 +42,8 @@ def prepare_geometry(cfg: dict) -> dict:
         if len(sk) != 1:
             raise ValueError("skin file must contain exactly one body")
         skin = sk[0]
+        if "component" in skin_spec:
+            skin = R.select_component(skin, int(skin_spec["component"]), "outer skin surface of a multi-shell file")
         out["audit_source"]["skin"] = audit_body(skin)
         bones = {}
         for b in g.get("bones", []):
@@ -54,6 +57,8 @@ def prepare_geometry(cfg: dict) -> dict:
                 if not b.get("include", True):
                     out["notes"].append(f"{b['name']}: excluded by configuration ({b.get('reason', 'no reason given')}).")
                     continue
+                if "component" in b:
+                    body = R.select_component(body, int(b["component"]), "bone shell of a multi-shell file")
                 bones[b["name"]] = R.basic_cleanup(body)
                 out["roles"][b["name"]] = b.get("role", "unidentified")
         for e in g.get("ignored_files", []):
@@ -62,6 +67,17 @@ def prepare_geometry(cfg: dict) -> dict:
                 out["audit_source"][e["name"]] = audit_body(body)
                 out["notes"].append(f"{e['name']}: listed as ignored ({e.get('reason', '')}).")
         skin = R.basic_cleanup(skin)
+        for key, spec in (g.get("segmented_layers") or {}).items():
+            if key == "note":
+                continue
+            lb = load_body(spec["path"], spec.get("unit"), name=key)
+            if len(lb) != 1:
+                raise ValueError(f"segmented layer {key}: file must contain one body")
+            body = lb[0]
+            if "component" in spec:
+                body = R.select_component(body, int(spec["component"]), f"{key} surface of a multi-shell file")
+            layers[key] = R.basic_cleanup(body)
+            out["audit_source"][key] = audit_body(layers[key], check_self_intersection=False)
     # expected anatomy check
     for exp in g.get("expected_bones", []):
         if not any(exp.lower() in str(r).lower() for r in out["roles"].values()):
@@ -73,12 +89,14 @@ def prepare_geometry(cfg: dict) -> dict:
                        np.asarray(al.get("anterior_hint", [0, 1.0, 0]), float), use_pca=al["method"] == "pca")
         skin = R.transform(skin, M, f"limb frame ({al['method']}): long axis -> +z, anterior -> +y, distal apex -> z=0")
         bones = {k: R.transform(v, M, "same limb-frame transform as skin") for k, v in bones.items()}
+        layers = {k: R.transform(v, M, "same limb-frame transform as skin") for k, v in layers.items()}
         out["frame_transform"] = M.tolist()
     elif al.get("method") == "translate_apex":
         apex_z = skin.vertices[:, 2].min()
         M = np.eye(4); M[2, 3] = -apex_z
         skin = R.transform(skin, M, "translate distal apex to z = 0")
         bones = {k: R.transform(v, M, "same translation") for k, v in bones.items()}
+        layers = {k: R.transform(v, M, "same translation") for k, v in layers.items()}
         out["frame_transform"] = M.tolist()
     # FE remeshing (logged)
     rm = g.get("remesh", {})
@@ -92,7 +110,9 @@ def prepare_geometry(cfg: dict) -> dict:
     out["assembly"] = audit_assembly(skin, list(bones.values()))
     out["skin"] = skin
     out["bones"] = bones
-    out["history"] = {"skin": skin.history, **{k: v.history for k, v in bones.items()}}
+    out["segmented_layers"] = layers   # full-resolution inner surfaces (not remeshed)
+    out["history"] = {"skin": skin.history, **{k: v.history for k, v in bones.items()},
+                      **{f"layer:{k}": v.history for k, v in layers.items()}}
     return out
 
 
@@ -134,7 +154,10 @@ def build_case(cfg: dict, geo: dict) -> dict:
                 thickness_smoothing=L["thickness_smoothing"], axis=[0, 0, 1.0],
                 skin_fiber_reference=L["skin_fiber_reference"], muscle_formulation=L["muscle_formulation"],
                 muscle_fiber=L["muscle_fiber"], optimize=L["optimize"], mesh_bones=True,
-                proximal_cut=cfg["geometry"].get("proximal_cut", True))
+                proximal_cut=cfg["geometry"].get("proximal_cut", True),
+                max_fraction_total=L.get("max_fraction_total", 0.9))
+    if geo.get("segmented_layers"):
+        lcfg["measured_layers"] = geo["segmented_layers"]
     model, layer_rep = build_layered_model(geo["skin"], geo["bones"], lcfg)
     sock_rep = None
     S = cfg.get("socket", {"enabled": False})

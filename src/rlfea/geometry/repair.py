@@ -116,3 +116,23 @@ def remesh(s: TriSurface, size_mm: float, size_fn=None, angle_deg: float = 40.0,
             volume_change_percent=float(100 * (out.volume() - s.volume()) / s.volume()),
             before=before, after=_summary(out))
     return out
+
+
+def select_component(s: TriSurface, rank: int, reason: str = "") -> TriSurface:
+    """Keep one connected component of a multi-shell body: components are
+    ranked by |enclosed volume| (0 = largest).  Used when one STL holds
+    several shells (e.g. outer and inner skin surface).  Logged."""
+    import trimesh
+    m = trimesh.Trimesh(s.vertices.copy(), s.faces.copy(), process=False)
+    m.merge_vertices()
+    comps = sorted(m.split(only_watertight=False), key=lambda c: -abs(c.volume))
+    if not 0 <= rank < len(comps):
+        raise ValueError(f"{s.name}: component {rank} requested, body has {len(comps)}")
+    c = comps[rank]
+    out = s.copy()
+    out.vertices = np.asarray(c.vertices, float)
+    out.faces = np.asarray(c.faces, int)
+    out.log("select_component", rank=rank, n_components=len(comps),
+            component_volumes_mm3=[float(abs(x.volume)) for x in comps], reason=reason,
+            before=_summary(s), after=_summary(out))
+    return out

@@ -1,0 +1,571 @@
+{
+ "checks": [
+  {
+   "name": "HGO skin: uniaxial_tension (hex8)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 8.291789754972521e-13,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "HGO skin: uniaxial_tension (tet4/ut4-solid)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 8.291789754972521e-13,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "HGO skin: uniaxial_compression (hex8)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 4.5410574330031373e-13,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "HGO skin: uniaxial_compression (tet4/ut4-solid)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 4.5410574330031373e-13,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "HGO skin: simple_shear (hex8)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 1.0833938735828644e-12,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "HGO skin: simple_shear (tet4/ut4-solid)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 1.0833938735828644e-12,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "HGO skin: volumetric (hex8)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 1.0540444307268874e-12,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "HGO skin: volumetric (tet4/ut4-solid)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 1.0540444307268874e-12,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "HGO skin: rotated_stretch_RU (hex8)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 8.499648576073323e-13,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "HGO skin: rotated_stretch_RU (tet4/ut4-solid)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 8.499648576073323e-13,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "HGO skin: rigid rotation 60 deg (hex8)",
+   "metric": "max |sigma| / mu",
+   "value": 5.874287043793446e-15,
+   "tolerance": 1e-08,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "HGO skin: rigid rotation 60 deg (tet4/ut4-solid)",
+   "metric": "max |sigma| / mu",
+   "value": 1.6959290641807346e-14,
+   "tolerance": 1e-08,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Ogden fat/muscle: uniaxial_tension (hex8)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 1.5997288084595761e-12,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Ogden fat/muscle: uniaxial_tension (tet4/ut4-solid)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 1.5997288084595761e-12,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Ogden fat/muscle: uniaxial_compression (hex8)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 1.5565256939237913e-12,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Ogden fat/muscle: uniaxial_compression (tet4/ut4-solid)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 1.5565256939237913e-12,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Ogden fat/muscle: simple_shear (hex8)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 1.0243021917940398e-12,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Ogden fat/muscle: simple_shear (tet4/ut4-solid)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 1.0241729749160539e-12,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Ogden fat/muscle: volumetric (hex8)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 3.7030670019482504e-13,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Ogden fat/muscle: volumetric (tet4/ut4-solid)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 3.7030670019482504e-13,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Ogden fat/muscle: rotated_stretch_RU (hex8)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 3.2166630569262328e-12,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Ogden fat/muscle: rotated_stretch_RU (tet4/ut4-solid)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 3.2166630569262328e-12,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Ogden fat/muscle: rigid rotation 60 deg (hex8)",
+   "metric": "max |sigma| / mu",
+   "value": 1.8447604831302684e-32,
+   "tolerance": 1e-08,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Ogden fat/muscle: rigid rotation 60 deg (tet4/ut4-solid)",
+   "metric": "max |sigma| / mu",
+   "value": 1.1102230246264369e-14,
+   "tolerance": 1e-08,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Mooney-Rivlin silicone: uniaxial_tension (hex8)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 5.843733260622489e-13,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Mooney-Rivlin silicone: uniaxial_tension (tet4/ut4-solid)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 5.843733260622489e-13,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Mooney-Rivlin silicone: uniaxial_compression (hex8)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 6.132389678027132e-13,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Mooney-Rivlin silicone: uniaxial_compression (tet4/ut4-solid)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 6.132389678027132e-13,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Mooney-Rivlin silicone: simple_shear (hex8)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 4.698209414103852e-16,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Mooney-Rivlin silicone: simple_shear (tet4/ut4-solid)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 4.698209414103852e-16,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Mooney-Rivlin silicone: volumetric (hex8)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 5.77111416459065e-14,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Mooney-Rivlin silicone: volumetric (tet4/ut4-solid)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 5.790946172029106e-14,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Mooney-Rivlin silicone: rotated_stretch_RU (hex8)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 1.5642897941533173e-12,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Mooney-Rivlin silicone: rotated_stretch_RU (tet4/ut4-solid)",
+   "metric": "max rel. error vs independent W(C)",
+   "value": 1.5641830094039042e-12,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Mooney-Rivlin silicone: rigid rotation 60 deg (hex8)",
+   "metric": "max |sigma| / mu",
+   "value": 4.16333634234e-16,
+   "tolerance": 1e-08,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Mooney-Rivlin silicone: rigid rotation 60 deg (tet4/ut4-solid)",
+   "metric": "max |sigma| / mu",
+   "value": 2.2204460492499997e-14,
+   "tolerance": 1e-08,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Frictional sliding (Coulomb), rigid plate on block",
+   "metric": "|Fx|/|Fz| at full slip (target mu = 0.3)",
+   "value": 0.2933910291735179,
+   "tolerance": 0.03,
+   "pass": true,
+   "detail": {
+    "status": "converged",
+    "time": [
+     0.5,
+     1.0,
+     1.1,
+     1.2,
+     1.3,
+     1.4,
+     1.5,
+     1.6,
+     1.7,
+     1.8,
+     1.9,
+     2.0
+    ],
+    "Fx": [
+     -0.000289313457867,
+     -5.50868323072e-05,
+     1.14152971943,
+     1.14101414216,
+     0.987180472883,
+     0.987340002152,
+     0.987362175342,
+     0.987365941803,
+     0.98736660384,
+     0.987366721455,
+     0.987366742455,
+     0.987366746216
+    ],
+    "Fz": [
+     -1.90730247,
+     -3.83653086512,
+     -3.82891222869,
+     -3.82674177343,
+     -3.3648017497,
+     -3.36526845385,
+     -3.36534505913,
+     -3.3653582564,
+     -3.36536056957,
+     -3.36536097866,
+     -3.3653610514,
+     -3.36536106437
+    ],
+    "ratio_end": 0.2933910291735179,
+    "ratio_first_slide_output": 0.29813420920869627
+   }
+  },
+  {
+   "name": "Contact opening (compression only, separation)",
+   "metric": "|Fz| end / |Fz| max after lifting past contact",
+   "value": 0.0,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": {
+    "status": "converged",
+    "Fz": [
+     -3.81419217895,
+     -8.2107331894e-48,
+     0.0
+    ],
+    "times": [
+     1.0,
+     1.5,
+     2.0
+    ],
+    "Fz_end_over_Fz_max": 0.0,
+    "max_pressure_end": 0.0,
+    "gap_end_min_max": [
+     0.0,
+     0.0
+    ]
+   }
+  },
+  {
+   "name": "Rigid revolute joint + rigid spring + rigid moment",
+   "metric": "relative error of hinge rotation",
+   "value": 5.325972454559131e-06,
+   "tolerance": 0.01,
+   "pass": true,
+   "detail": {
+    "status": "converged",
+    "theta_rad": 0.126339454687,
+    "theta_small_angle_ref": 0.125,
+    "theta_ref": 0.12634012757103935,
+    "rel_error": 5.325972454559131e-06
+   }
+  },
+  {
+   "name": "Cable routing force/moment balance (guide friction 0.0)",
+   "metric": "|sum F| N, |sum M| N mm",
+   "value": 2.0591523578650545e-12,
+   "tolerance": 1e-09,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Cable routing force/moment balance (guide friction 0.2)",
+   "metric": "|sum F| N, |sum M| N mm",
+   "value": 3.7057375295732124e-13,
+   "tolerance": 1e-09,
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "Energy balance, frictionless indentation",
+   "metric": "|W_ext - U| / U (trapezoid over 10 must points)",
+   "value": 0.0030934150025020046,
+   "tolerance": 0.02,
+   "pass": true,
+   "detail": {
+    "status": "converged",
+    "external_work_Nmm": 1.2665233273672,
+    "strain_energy_Nmm": 1.2626175273656253,
+    "rel_diff": 0.0030934150025020046
+   }
+  },
+  {
+   "name": "Restart after SIGKILL (frictional contact + rigid body)",
+   "metric": "max relative rigid reaction difference vs uninterrupted run",
+   "value": 0.0,
+   "tolerance": 1e-06,
+   "pass": true,
+   "detail": {
+    "first_status": "interrupted",
+    "killed_returncode": -9,
+    "killed_at_time": 0.5,
+    "restart_status": "converged",
+    "restart_returncode": 0,
+    "final_time": 2.0,
+    "reference_final_time": 2.0,
+    "common_output_times": 12,
+    "max_rel_reaction_difference": 0.0,
+    "pass": true
+   }
+  },
+  {
+   "name": "Indentation mesh refinement (hex8 three-field, k = 100 mu)",
+   "metric": "relative change between the two finest meshes",
+   "value": 0.03631525165352544,
+   "tolerance": 0.05,
+   "pass": true,
+   "detail": {
+    "n": [
+     4,
+     8,
+     12
+    ],
+    "force": [
+     -0.3732380146816,
+     -0.33691789516855997,
+     -0.32511139311226
+    ]
+   }
+  },
+  {
+   "name": "Near-incompressible indentation (k = 100 mu): tet4/standard n=4",
+   "metric": "patch force / hex8 three-field at the same n (locking EXPECTED for standard tet4)",
+   "value": 2.7944846881764276,
+   "tolerance": null,
+   "pass": true,
+   "detail": {
+    "status": "converged",
+    "etype": "tet4",
+    "domain": null,
+    "params": null,
+    "n": 4,
+    "n_nodes": 405,
+    "patch_force_N": -1.0430079170731,
+    "ratio_to_finest_hex8": 3.208155540439496
+   }
+  },
+  {
+   "name": "Near-incompressible indentation (k = 100 mu): tet4/ut4-solid n=8",
+   "metric": "patch force / hex8 three-field at the same n",
+   "value": 1.0152328677822007,
+   "tolerance": 0.1,
+   "pass": true,
+   "detail": {
+    "status": "converged",
+    "etype": "tet4",
+    "domain": "ut4-solid",
+    "params": {
+     "alpha": 0.05,
+     "iso_stab": 0
+    },
+    "n": 8,
+    "n_nodes": 2601,
+    "patch_force_N": -0.34205012091912,
+    "ratio_to_finest_hex8": 1.0521013048626418
+   }
+  },
+  {
+   "name": "Near-incompressible indentation (k = 100 mu): tet10/standard n=4",
+   "metric": "patch force / hex8 three-field at the same n",
+   "value": 0.998740838521631,
+   "tolerance": 0.1,
+   "pass": true,
+   "detail": {
+    "status": "converged",
+    "etype": "tet10",
+    "domain": null,
+    "params": null,
+    "n": 4,
+    "n_nodes": 2601,
+    "patch_force_N": -0.37276804775125,
+    "ratio_to_finest_hex8": 1.146585618494564
+   }
+  }
+ ],
+ "locking_cases": {
+  "hex8 three-field n=4": {
+   "status": "converged",
+   "etype": "hex8",
+   "domain": null,
+   "params": null,
+   "n": 4,
+   "n_nodes": 405,
+   "patch_force_N": -0.3732380146816
+  },
+  "hex8 three-field n=8": {
+   "status": "converged",
+   "etype": "hex8",
+   "domain": null,
+   "params": null,
+   "n": 8,
+   "n_nodes": 2601,
+   "patch_force_N": -0.33691789516855997
+  },
+  "hex8 three-field n=12": {
+   "status": "converged",
+   "etype": "hex8",
+   "domain": null,
+   "params": null,
+   "n": 12,
+   "n_nodes": 8125,
+   "patch_force_N": -0.32511139311226
+  },
+  "tet4/standard n=4": {
+   "status": "converged",
+   "etype": "tet4",
+   "domain": null,
+   "params": null,
+   "n": 4,
+   "n_nodes": 405,
+   "patch_force_N": -1.0430079170731,
+   "ratio_to_finest_hex8": 3.208155540439496
+  },
+  "tet4/ut4-solid n=8": {
+   "status": "converged",
+   "etype": "tet4",
+   "domain": "ut4-solid",
+   "params": {
+    "alpha": 0.05,
+    "iso_stab": 0
+   },
+   "n": 8,
+   "n_nodes": 2601,
+   "patch_force_N": -0.34205012091912,
+   "ratio_to_finest_hex8": 1.0521013048626418
+  },
+  "tet10/standard n=4": {
+   "status": "converged",
+   "etype": "tet10",
+   "domain": null,
+   "params": null,
+   "n": 4,
+   "n_nodes": 2601,
+   "patch_force_N": -0.37276804775125,
+   "ratio_to_finest_hex8": 1.146585618494564
+  },
+  "INFO ut4 n=8 at k = 1000 mu (ratio to hex8 n=8)": 1.4477100585227567
+ },
+ "scope": "numerical verification only"
+}

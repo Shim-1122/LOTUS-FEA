@@ -117,6 +117,14 @@ def mesh_volume_gmsh(outer: tuple[np.ndarray, np.ndarray, np.ndarray],
     return np.asarray(nt, np.int64), xyz, main, hol
 
 
+def _chunked_distance(surf: TriSurface, pts: np.ndarray, chunk: int = 2000) -> np.ndarray:
+    """Memory-bounded exact closest distance (large segmented surfaces)."""
+    import trimesh
+    m = trimesh.Trimesh(surf.vertices, surf.faces, process=False)
+    return np.concatenate([trimesh.proximity.closest_point(m, pts[i:i + chunk])[1]
+                           for i in range(0, len(pts), chunk)]) if len(pts) else np.zeros(0)
+
+
 def build_layered_model(skin: TriSurface, bones: dict[str, TriSurface], cfg: dict) -> tuple[FEModel, dict]:
     """Create the conforming skin/fat/muscle/bone model.
 
@@ -128,6 +136,9 @@ def build_layered_model(skin: TriSurface, bones: dict[str, TriSurface], cfg: dic
     """
     rep: dict = {"assumption": "Layer thicknesses are configurable geometric assumptions, "
                                "NOT patient-specific segmentation."}
+    # cfg["measured_layers"] = {"skin_inner": TriSurface, "fat_inner": TriSurface} switches to
+    # per-vertex thickness measured from a supplied segmentation (max_fraction_total caps
+    # skin+fat at that fraction of the skin-to-bone distance).
     axis = np.asarray(cfg.get("axis", [0, 0, 1.0]), float)
     axis /= np.linalg.norm(axis)
     V0 = skin.vertices.copy()
@@ -149,16 +160,41 @@ def build_layered_model(skin: TriSurface, bones: dict[str, TriSurface], cfg: dic
         d = np.min([closest_distance(b, V0) for b in bones.values() if not b.empty], axis=0)
     else:
         d = np.full(nV, np.inf)
-    ts_nom, tf_nom = float(cfg["skin_thickness"]), float(cfg["fat_thickness"])
-    fs, ff = float(cfg.get("max_fraction_skin", 0.2)), float(cfg.get("max_fraction_fat", 0.2))
+    meas = cfg.get("measured_layers")
     tmin = float(cfg.get("min_layer", 0.15))
-    ts = np.minimum(ts_nom, fs * d)
-    tf = np.minimum(tf_nom, ff * d)
+    if meas:
+        # Segmented layers: per-vertex thickness MEASURED from the supplied
+        # inner surfaces (closest-point distance from the outer skin), then
+        # the same smoothing / bone-clearance / wedge-validity pipeline.
+        ds_in = _chunked_distance(meas["skin_inner"], V0)
+        df_in = _chunked_distance(meas["fat_inner"], V0)
+        ts_nom = ds_in
+        tf_nom = np.maximum(df_in - ds_in, 0.0)
+        rep["assumption"] = ("Layer thicknesses are MEASURED per skin vertex from the supplied segmented "
+                             "surfaces (skin inner and fat inner); the segmentation itself is unverified.")
+        rep["measured_skin_thickness_mm"] = Q.summarize(ts_nom)
+        rep["measured_fat_thickness_mm"] = Q.summarize(tf_nom)
+        ftot = float(cfg.get("max_fraction_total", 0.9))
+        tot = ts_nom + tf_nom
+        lim = ftot * d
+        scale = np.where(tot > lim, lim / np.maximum(tot, 1e-12), 1.0)
+        ts, tf = ts_nom * scale, tf_nom * scale
+        fs = ff = ftot
+    else:
+        ts_nom, tf_nom = float(cfg["skin_thickness"]), float(cfg["fat_thickness"])
+        fs, ff = float(cfg.get("max_fraction_skin", 0.2)), float(cfg.get("max_fraction_fat", 0.2))
+        ts = np.minimum(ts_nom, fs * d)
+        tf = np.minimum(tf_nom, ff * d)
     clamped = (ts < ts_nom - 1e-9) | (tf < tf_nom - 1e-9)
     it = int(cfg.get("thickness_smoothing", 5))
     ts = np.minimum(_laplacian_smooth_scalar(skin, ts, it), ts_nom)
     tf = np.minimum(_laplacian_smooth_scalar(skin, tf, it), tf_nom)
-    ts = np.minimum(ts, fs * d); tf = np.minimum(tf, ff * d)
+    if meas:
+        tot = ts + tf
+        sc = np.where(tot > fs * d, fs * d / np.maximum(tot, 1e-12), 1.0)
+        ts, tf = ts * sc, tf * sc
+    else:
+        ts = np.minimum(ts, fs * d); tf = np.minimum(tf, ff * d)
     too_thin = (ts < tmin) | (tf < tmin)
     ts = np.maximum(ts, tmin); tf = np.maximum(tf, tmin)
     rep["skin_to_bone_distance_mm"] = Q.summarize(d[np.isfinite(d)]) if np.isfinite(d).any() else None
@@ -172,7 +208,8 @@ def build_layered_model(skin: TriSurface, bones: dict[str, TriSurface], cfg: dic
                                     f"min {float(d[too_thin].min()):.3f} mm")
 
     # iterate: offset, check inner-surface validity, locally thin where invalid
-    for attempt in range(6):
+    n_attempts = 16 if meas else 6
+    for attempt in range(n_attempts):
         V1 = V0 - ts[:, None] * n
         V2 = V1 - tf[:, None] * n
         S2 = TriSurface("S2", V2, F)
@@ -182,14 +219,31 @@ def build_layered_model(skin: TriSurface, bones: dict[str, TriSurface], cfg: dic
         jac = np.minimum(Q.penta6_corner_jacobians(Xall, W_skin).min(axis=1),
                          Q.penta6_corner_jacobians(Xall, W_fat).min(axis=1))
         bad_faces = jac <= 0.02
-        si = self_intersections(S2)
-        bone_hits = sum(surfaces_intersect(S2, b) for b in bones.values() if not b.empty)
+        if meas:
+            si, si_f = self_intersections(S2, return_faces=True)
+            hits = [surfaces_intersect(S2, b, return_faces=True) for b in bones.values() if not b.empty]
+            bone_hits = sum(h[0] for h in hits)
+            hit_f = np.unique(np.concatenate([si_f] + [h[1] for h in hits])) if (si or bone_hits) else np.zeros(0, int)
+        else:
+            si = self_intersections(S2)
+            bone_hits = sum(surfaces_intersect(S2, b) for b in bones.values() if not b.empty)
         rep.setdefault("offset_attempts", []).append({"attempt": attempt, "bad_wedges": int(bad_faces.sum()),
                                                       "S2_self_intersections": si, "S2_bone_intersections": bone_hits})
         if not bad_faces.any() and si == 0 and bone_hits == 0:
             break
         vbad = np.unique(F[bad_faces].ravel()) if bad_faces.any() else np.zeros(0, int)
-        if si or bone_hits:
+        if meas:
+            # measured layers: thin LOCALLY (offending faces + 2 rings), so the
+            # rest of the measured thickness field is kept
+            sel = np.zeros(nV, bool)
+            sel[vbad] = True
+            if len(hit_f):
+                sel[F[hit_f].ravel()] = True
+            for _ in range(2):
+                sel[F[sel[F].any(axis=1)].ravel()] = True
+            vbad = np.where(sel)[0]
+            rep["offset_attempts"][-1]["vertices_thinned"] = int(len(vbad))
+        elif si or bone_hits:
             # thin everything slightly where curvature is high (fallback, logged)
             vbad = np.arange(nV)
         ts[vbad] *= 0.7; tf[vbad] *= 0.7
@@ -197,6 +251,11 @@ def build_layered_model(skin: TriSurface, bones: dict[str, TriSurface], cfg: dic
     else:
         raise RuntimeError(f"layer offset could not be made valid: {rep['offset_attempts'][-1]}")
     rep["min_wedge_scaled_jacobian"] = float(jac.min())
+    if meas:
+        # geometric fidelity of the offset layers vs the segmented surfaces
+        rep["offset_vs_segmentation_mm"] = {
+            "skin_inner": Q.summarize(_chunked_distance(meas["skin_inner"], V1)),
+            "fat_inner": Q.summarize(_chunked_distance(meas["fat_inner"], V2))}
 
     # ---- muscle + bone tetrahedra -------------------------------------
     Xs = np.vstack([V0, V1, V2])

@@ -5,20 +5,26 @@ This software produces **numerical** finite element results. Verification
 represents the real limb). No validation has been performed.
 
 ## Geometry and anatomy
-* Supplied residual-limb model (private, not in this repository): the bone
-  set is **incomplete**. It contains a distal femur, a patella and one slender
-  unidentified bone (about 100 mm x 28 mm). **No tibia is present**, and
-  `Limb w- Bone - Part 1 (1).step` is an empty body. Missing bones are never
-  created or substituted. Results for that geometry cannot represent a real
-  transtibial limb's load path, because the tibia normally carries most of
-  the socket load.
-* Skin, fat and muscle are **assumed layers** of configurable thickness offset
-  from the skin envelope. They are not segmentation. Layer thickness is
-  reduced automatically where bone approaches the skin, and every reduction
-  is reported.
-* Bones are rigid by default, with explicit supports. The deformable-bone
-  option uses homogeneous cortical properties for whole bones.
-* Tissue-bone interfaces are bonded (shared nodes).
+* The segmented limb in `data/limb/` has four bones: a candidate tibia,
+  distal femur, patella and fibula. The labels are heuristic (size, shape,
+  position) and unconfirmed. Nobody has verified where the segmentation came
+  from or how accurate it is.
+* Skin and fat thickness are measured at every skin vertex as the
+  closest-point distance to the segmented inner surfaces. Meshed layers
+  follow those surfaces closely (median deviation 0.01 mm for inner skin and
+  0.08 mm for inner fat). Where offsetting would self-intersect or cut into
+  bone, the layers are thinned locally, and each change is logged with its
+  deviation; the worst local deviation is reported in the run's
+  `mesh/layer_report.json`. Fat that is 0 mm thick in the segmentation is
+  raised to 0.15 mm.
+* The synthetic limb (`configs/synthetic_human.yaml`) still uses assumed
+  layer thicknesses.
+* Bones are rigid by default, with explicit supports. In the knee model the
+  femur, tibia and fibula are fixed (extended, locked knee) and the patella
+  moves with the tissue. The deformable-bone option uses homogeneous
+  cortical properties for whole bones.
+* Tissue-bone interfaces are bonded (shared nodes). No ligaments, tendons or
+  joint capsule are modelled.
 
 ## Socket and loads
 * No current socket CAD was supplied, and V6 is excluded. The petal socket

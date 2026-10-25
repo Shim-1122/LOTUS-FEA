@@ -278,10 +278,11 @@ def _tri_tri_intersect(P, Q):
     return res
 
 
-def self_intersections(surf: TriSurface, max_faces: int = 400_000) -> int:
-    """Count intersecting pairs of non-adjacent triangles (AABB prefilter)."""
+def self_intersections(surf: TriSurface, max_faces: int = 400_000, return_faces: bool = False):
+    """Count intersecting pairs of non-adjacent triangles (AABB prefilter).
+    With return_faces=True also return the indices of the faces involved."""
     if surf.empty or len(surf.faces) > max_faces:
-        return -1
+        return (-1, np.zeros(0, int)) if return_faces else -1
     from rtree import index
     V, F = surf.vertices, surf.faces
     T = V[F]
@@ -294,22 +295,25 @@ def self_intersections(surf: TriSurface, max_faces: int = 400_000) -> int:
         for j in idx.intersection((*lo[i] - pad, *hi[i] + pad)):
             if j > i:
                 pairs.append((i, j))
+    none = (0, np.zeros(0, int)) if return_faces else 0
     if not pairs:
-        return 0
+        return none
     pairs = np.array(pairs)
     shared = (F[pairs[:, 0]][:, :, None] == F[pairs[:, 1]][:, None, :]).any(axis=2).any(axis=1)
     pairs = pairs[~shared]
     if len(pairs) == 0:
-        return 0
-    n = 0
+        return none
+    hit = np.zeros(len(pairs), bool)
     for k in range(0, len(pairs), 200_000):
         pp = pairs[k:k + 200_000]
-        n += int(_tri_tri_intersect(T[pp[:, 0]], T[pp[:, 1]]).sum())
-    return n
+        hit[k:k + 200_000] = _tri_tri_intersect(T[pp[:, 0]], T[pp[:, 1]])
+    n = int(hit.sum())
+    return (n, np.unique(pairs[hit].ravel())) if return_faces else n
 
 
-def surfaces_intersect(a: TriSurface, b: TriSurface) -> int:
-    """Number of intersecting triangle pairs between two surfaces."""
+def surfaces_intersect(a: TriSurface, b: TriSurface, return_faces: bool = False):
+    """Number of intersecting triangle pairs between two surfaces (with
+    return_faces=True also the indices of the faces of `a` involved)."""
     from rtree import index
     Ta, Tb = a.vertices[a.faces], b.vertices[b.faces]
     lo, hi = Tb.min(axis=1), Tb.max(axis=1)
@@ -318,9 +322,12 @@ def surfaces_intersect(a: TriSurface, b: TriSurface) -> int:
     la, ha = Ta.min(axis=1), Ta.max(axis=1)
     pairs = [(i, j) for i in range(len(Ta)) for j in idx.intersection((*la[i], *ha[i]))]
     if not pairs:
-        return 0
+        return (0, np.zeros(0, int)) if return_faces else 0
     pairs = np.array(pairs)
-    return int(_tri_tri_intersect(Ta[pairs[:, 0]], Tb[pairs[:, 1]]).sum())
+    hit = _tri_tri_intersect(Ta[pairs[:, 0]], Tb[pairs[:, 1]])
+    if return_faces:
+        return int(hit.sum()), np.unique(pairs[hit, 0])
+    return int(hit.sum())
 
 
 # --------------------------------------------------------------------------
