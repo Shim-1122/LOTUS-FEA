@@ -1,4 +1,4 @@
-# Knee FEA: full residual limb from the supplied segmented STLs (data/limb).
+# LOTUS FEA: full residual limb from the supplied segmented STLs (data/limb).
 # Same materials, contact, loads and solver settings as the earlier
 # supplied-limb run; the socket now has four petals (current design), and the anatomy changed:
 #   * skin and fat thickness are MEASURED per skin vertex from the segmented

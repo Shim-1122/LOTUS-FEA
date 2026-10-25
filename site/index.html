@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Knee FEA</title>
+<title>LOTUS FEA</title>
 <meta name="description" content="Full residual-limb finite element analysis of a below-knee limb in an adjustable petal socket (FEBio 4.13).">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
@@ -69,12 +69,12 @@ a{color:var(--accent)}
 <div class="wrap">
   <header>
     <span class="kicker">Senior design &middot; nighttime transtibial prosthesis &middot; FEBio 4.13.0.32ae206ff</span>
-    <h1>Knee FEA</h1>
-    <p class="lead">This is a full finite element model of a below-knee residual limb, with skin, fat, muscle and four bones, squeezed by an adjustable petal socket. The run below tightened the lace to the 75 N example tension and then pulled the socket 2&nbsp;mm off the limb. <span class="pill ok">solver converged (tightening + pull-out)</span></p>
+    <h1>LOTUS FEA</h1>
+    <p class="lead">This is a full finite element model of a below-knee residual limb, with skin, fat, muscle and four bones, squeezed by an adjustable four-petal LOTUS socket. The run below tightened the lace to the 75 N example tension and then pulled the socket 2&nbsp;mm off the limb. <span class="pill ok">solver converged (tightening + pull-out)</span></p>
     <div class="links">
       <a class="btn" href="viewer.html">Open the 3D viewer</a>
       <a class="btn alt" href="report.pdf">Full run report (PDF)</a>
-      <a class="btn alt" href="https://github.com/Shim-1122/knee-fea">Source code and data</a>
+      <a class="btn alt" href="https://github.com/Shim-1122/LOTUS-FEA">Source code and data</a>
     </div>
   </header>
 
@@ -133,8 +133,8 @@ a{color:var(--accent)}
 
   <section>
     <h2>Run it yourself</h2>
-    <pre>git clone https://github.com/Shim-1122/knee-fea.git
-cd knee-fea
+    <pre>git clone https://github.com/Shim-1122/LOTUS-FEA.git
+cd LOTUS-FEA
 sudo bash scripts/build_febio.sh
 pip install -r requirements.lock.txt &amp;&amp; pip install -e . --no-deps
 rlfea verify

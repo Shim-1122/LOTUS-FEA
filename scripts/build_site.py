@@ -2,7 +2,7 @@
 
 usage: python scripts/build_site.py --run runs/knee_limb_segmented_T75 \
            --verification docs/verification/verification.json \
-           --repo-url https://github.com/Shim-1122/knee-fea [--out site]
+           --repo-url https://github.com/Shim-1122/LOTUS-FEA [--out site]
 
 The page states the run's real solver state; a failed or interrupted step is
 shown as such, and nothing is filled in from other runs.

@@ -1,6 +1,6 @@
-# Knee FEA
+# LOTUS FEA
 
-Knee FEA runs full residual-limb finite element analysis of a transtibial
+LOTUS FEA (the finite element model for the LOTUS socket: Lighted Overnight Transtibial Universal Socket) runs full residual-limb finite element analysis of a transtibial
 (below-knee) limb inside an adjustable petal socket. It was built for a
 senior design project on a nighttime prosthesis. It covers:
 
@@ -61,7 +61,7 @@ pip install -r requirements.lock.txt && pip install -e . --no-deps
 # sudo apt-get install libglu1-mesa libgl1 libosmesa6 libxrender1 libxcursor1 libxft2 libxinerama1
 ```
 
-Alternatively, run `docker build -t knee-fea .` for a complete pinned environment
+Alternatively, run `docker build -t lotus-fea .` for a complete pinned environment
 (FEBio, Python and TeX).
 
 ## End-to-end commands
