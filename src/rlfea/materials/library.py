@@ -65,7 +65,7 @@ def load_material_set(path: str) -> dict:
         ftype = m["febio_type"]
         if ftype not in ALLOWED:
             raise MaterialError(f"{key}: unsupported FEBio material {ftype!r}")
-        params, prov, assumed = {}, {}, []
+        params, prov, assumed, approx = {}, {}, [], []
         for pname, p in m["parameters"].items():
             if pname not in ALLOWED[ftype]:
                 raise MaterialError(f"{key}: parameter {pname!r} not valid for {ftype}")
@@ -79,6 +79,8 @@ def load_material_set(path: str) -> dict:
                            "note": p.get("note", "")}
             if src in ("assumption", "PriorPackageAssumption"):
                 assumed.append(pname)
+            elif (out["references"].get(src) or {}).get("kind") == "approximation":
+                approx.append(pname)
         pa = m.get("passive_anisotropy")
         if pa and pa.get("enabled"):
             raise MaterialError(f"{key}: passive anisotropy enabled but no calibrated parameters with provenance "
@@ -89,7 +91,8 @@ def load_material_set(path: str) -> dict:
             kind = ALLOWED[ftype][pname]
             unc[pname] = [_conv({"value": v, "unit": unit}, kind) for v in rng]
         out["materials"][key] = {"febio_type": ftype, "params": params, "provenance": prov,
-                                 "assumed_parameters": assumed, "calibration_range": m.get("calibration_range", ""),
+                                 "assumed_parameters": assumed, "approximated_parameters": approx,
+                                 "calibration_range": m.get("calibration_range", ""),
                                  "uncertainty": unc, "region": m.get("region", key),
                                  "requires_user_calibration": bool(m.get("requires_user_calibration", False)),
                                  "model": m.get("model", "")}

@@ -13,6 +13,25 @@ references:
   ReillyBurstein1975:
     citation: "Reilly DT, Burstein AH. The elastic and ultimate properties of compact bone tissue. J Biomech. 1975;8(6):393-405."
     doi: "10.1016/0021-9290(75)90075-5"
+  Sanders2004:
+    citation: "Sanders JE, Nicholson BS, Zachariah SG, Cassisi DV, Karchin A, Fergason JR. Testing of elastomeric liners used in limb prosthetics: classification of 15 products by mechanical performance. J Rehabil Res Dev. 2004;41(2):175-186."
+    doi: null
+    url: "https://www.rehab.research.va.gov/jour/04/41/2/sanders.html"
+    kind: approximation
+    use: "Silicone GEL liner products (EasyLiner ELDT 32-6, EasyLiner Super Stretch, Alpha Liner, SiloLiner, DERMO Liner-6): linear shear G = 19.3-52.9 kPa (median 23.3), tensile H = 30.4-76.1 kPa. Used as a generic approximation for the team's medical-grade gel-liner silicone, not a test of that product."
+  ReppelWeinberg2018:
+    citation: "Reppel T, Weinberg K. Experimental determination of elastic and rupture properties of printed Ninjaflex. Technische Mechanik. 2018;38(1):104-112."
+    doi: "10.24352/UB.OVGU-2018-010"
+    kind: approximation
+    use: "NinjaFlex is an 85A Shore TPU; its printed-specimen Mooney-Rivlin fit stands in for the team's 85A TPU cushion (material match, NOT inferred from Shore hardness; infill/print settings differ)."
+  GyroidHomogenisationApprox:
+    citation: "Approximation: Gibson-Ashby cellular-solid scaling E*/Es = C (rho*)^n with C = 1 and n = 2 (bending-dominated lattice) applied to 8% gyroid infill of 85A TPU (Es from Reppel & Weinberg 2018). Range n = 1.5 (stretch/sheet-like) to C = 0.5 gives 36-252 kPa. Gibson LJ, Ashby MF. Cellular Solids: Structure and Properties, 2nd ed., Cambridge University Press, 1997."
+    doi: "10.1017/CBO9781139878326"
+    kind: approximation
+  TissueBulkRatioApprox:
+    citation: "Approximation: human soft-tissue bulk modulus taken as 100 x shear modulus, the same near-incompressibility ratio Sengeh et al. 2016 used for fat and muscle."
+    doi: "10.1016/j.jmbbm.2016.02.020"
+    kind: approximation
   PriorPackageAssumption:
     citation: "Supplied handoff package 03_Previous_Tissue_Analysis (silicone mu = 100 kPa listed as an assumed material; no measurement)."
     doi: null
@@ -27,7 +46,7 @@ materials:
       k2:    {value: 0.1327, unit: "-",  source: NiAnnaidh2012}
       kappa: {value: 0.1404, unit: "-",  source: NiAnnaidh2012, note: "dispersion, 0 <= kappa <= 1/3"}
       gamma: {value: 41.0,   unit: deg,  source: NiAnnaidh2012, note: "angle of each fibre family from local axis e1 (FEBio gamma). Mapping of Langer lines on the lower leg to e1 is an ASSUMPTION (see fiber_reference_axis)."}
-      k:     {value: 20.14,  unit: MPa,  source: assumption, note: "bulk modulus = 100 c (near-incompressibility assumption). FEBio HGO uses U = k/2((J^2-1)/2 - ln J) (= ABAQUS GOH with D = 2/k)."}
+      k:     {value: 20.14,  unit: MPa,  source: TissueBulkRatioApprox, note: "bulk modulus = 100 c, the human soft-tissue ratio used for fat and muscle (approximation). FEBio HGO uses U = k/2((J^2-1)/2 - ln J) (= ABAQUS GOH with D = 2/k)."}
     calibration_range: "Uniaxial tension, excised BACK skin, donors aged 81 and 89; small-strain mu from < 2% strain; nonlinear fit to ~50% strain. Not lower-leg, not in vivo, not compression."
     uncertainty:
       c: [0.10, 0.40]
@@ -73,20 +92,21 @@ materials:
   silicone_pad:
     model: Mooney_Rivlin_uncoupled
     febio_type: "Mooney-Rivlin"
-    region: socket silicone interface
+    region: "socket silicone interface: standard medical-grade silicone of the kind used in gel liners"
     parameters:
-      c1: {value: 0.05,  unit: MPa, source: PriorPackageAssumption, note: "ASSUMED: mu = 100 kPa -> c1 = mu/2. Supply the actual silicone's test data."}
-      c2: {value: 0.0,   unit: MPa, source: assumption}
-      k:  {value: 10.0,  unit: MPa, source: assumption, note: "near-incompressible bulk modulus (100 mu)"}
-    calibration_range: "NONE (uncalibrated assumption)."
+      c1: {value: 0.01165, unit: MPa, source: Sanders2004, note: "neo-Hookean (c2 = 0): FEBio uncoupled Mooney-Rivlin small-strain shear modulus mu = 2(c1 + c2); mu = 23.3 kPa = median linear shear stiffness G of the five silicone-gel liner products in Sanders 2004 (range 19.3-52.9 kPa)"}
+      c2: {value: 0.0,     unit: MPa, source: Sanders2004, note: "neo-Hookean choice: the source reports linear fits only"}
+      k:  {value: 2.33,    unit: MPa, source: TissueBulkRatioApprox, note: "silicone gels are near-incompressible; k = 100 mu by the same convention as the tissues"}
+    calibration_range: "Sanders 2004: linear shear fits to ~30 kPa shear stress; tension linear fits; compression to ~200 kPa, where gels stiffen strongly (sigma = A e + B (e - C)^D, A = 6-108 kPa, B = 224-837 kPa, C = 0.01-0.21). A neo-Hookean model does NOT reproduce that compressive stiffening, so pad compression under high pressure is overestimated."
     uncertainty:
-      c1: [0.025, 0.10]
+      c1: [0.00965, 0.02643]
   distal_cushion:
-    model: Mooney_Rivlin_uncoupled
-    febio_type: "Mooney-Rivlin"
-    region: socket distal cushion
+    model: neo_Hookean_compressible
+    febio_type: "neo-Hookean"
+    region: "socket distal cushion: 85A TPU printed with 2 walls and 8% gyroid infill (homogenised)"
     parameters:
-      c1: {value: 0.01, unit: MPa, source: assumption, note: "ASSUMED soft gel cushion, mu = 20 kPa. Supply measured data."}
-      c2: {value: 0.0,  unit: MPa, source: assumption}
-      k:  {value: 2.0,  unit: MPa, source: assumption}
-    calibration_range: "NONE (uncalibrated assumption)."
+      E: {value: 0.071, unit: MPa, source: GyroidHomogenisationApprox, note: "E* = Es (rho*)^2 with Es = 6 (c1 + c2) = 11.1 MPa (small-strain Young's modulus of the NinjaFlex 85A fit, c1 = 0.385, c2 = 1.47 MPa, Reppel & Weinberg 2018) and rho* = 0.08 (gyroid infill)."}
+      v: {value: 0.3,   unit: "-",  source: GyroidHomogenisationApprox, note: "a sparse lattice is compressible (it is NOT near-incompressible like solid TPU); typical foam Poisson ratio"}
+    calibration_range: "NONE for this print. Small-strain estimate only: a gyroid lattice in compression is linear, then plateaus, then densifies at large strain, which neo-Hookean does not capture. The 2 walls (perimeters) are not resolved; under through-thickness compression they act in series with the core and add little, but they stiffen the edges. Compress a printed cushion to calibrate."
+    uncertainty:
+      E: [0.036, 0.252]

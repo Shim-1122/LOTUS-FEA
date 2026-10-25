@@ -54,6 +54,9 @@ def prepare(config_path: str, runs_root: str = "runs", run_id: str | None = None
             warns.append(f"Material '{k}' REQUIRES USER CALIBRATION (see material set); results are provisional.")
         if m.get("assumed_parameters"):
             warns.append(f"Material '{k}' uses assumed (unsourced) parameters: {', '.join(m['assumed_parameters'])}.")
+        if m.get("approximated_parameters"):
+            warns.append(f"Material '{k}' uses literature-based APPROXIMATIONS (not measured on this material): "
+                         f"{', '.join(m['approximated_parameters'])}.")
     P.dump(rd.p("mesh", "layer_report.json"), case["layer_report"])
     P.dump(rd.p("mesh", "socket_report.json"), case["socket_report"])
     P.dump(rd.p("solver", "load_report.json"), case["load_report"])

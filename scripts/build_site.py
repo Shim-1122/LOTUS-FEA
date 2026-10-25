@@ -32,12 +32,11 @@ def _distortion(run, summ) -> str:
     """List item naming strongly compressed elements at the end of tightening."""
     import numpy as np
     import pyvista as pv
-    d = (_state_at(summ["states"], 1.0) or {}).get("deformation", {})
-    if not d.get("excessive_distortion_flag"):
-        return ""
     g = pv.read(os.path.join(run, "results", "volume_t1.0000.vtu"))
     J = np.asarray(g.cell_data["J"])
     n = int((J < 0.8).sum())
+    if n == 0:
+        return ""
     z = g.cell_centers().points[J < 0.8, 2]
     return (f"<li>At 75 N, {n} of {len(J)} elements ({100 * n / len(J):.2f}%) have a volume ratio J below 0.8 "
             f"(lowest {J.min():.2f}). They sit in one small patch of muscle, {z.min():.0f} to {z.max():.0f} mm "

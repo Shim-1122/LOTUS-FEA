@@ -5,10 +5,10 @@ This software produces **numerical** finite element results. Verification
 represents the real limb). No validation has been performed.
 
 ## Geometry and anatomy
-* The segmented limb in `data/limb/` has four bones: a candidate tibia,
-  distal femur, patella and fibula. The labels are heuristic (size, shape,
-  position) and unconfirmed. Nobody has verified where the segmentation came
-  from or how accurate it is.
+* The segmented limb in `data/limb/` is CAD built from approximations of an
+  MRI scan. It has four bones: a candidate tibia, distal femur, patella and
+  fibula. The labels are heuristic (size, shape, position) and unconfirmed,
+  and nobody has measured how closely the layers and bones match the scan.
 * Skin and fat thickness are measured at every skin vertex as the
   closest-point distance to the segmented inner surfaces. Meshed layers
   follow those surfaces closely (median deviation 0.01 mm for inner skin and
@@ -28,7 +28,7 @@ represents the real limb). No validation has been performed.
 
 ## Socket and loads
 * No current socket CAD was supplied, and V6 is excluded. The petal socket
-  is a **provisional parametric model**: six rigid petals, silicone pads,
+  is a **provisional parametric model**: four rigid petals (anterior, posterior, medial, lateral) with silicone pads,
   hinges, a distal cup and a cushion. The Anclote suction puck, the plate and
   the Bulldog adapter are treated only as the rigid support of the cup.
 * Lace routing is a provisional single-row circumferential lace unless an
@@ -45,14 +45,26 @@ represents the real limb). No validation has been performed.
   assumption are supplied.
 
 ## Materials
-* Skin HGO parameters come from excised back skin of elderly donors (Ni
-  Annaidh 2012), tested in uniaxial tension. Fat and muscle parameters come
-  from inverse FE of in-vivo indentation of a single transtibial residuum
-  (Sengeh 2016). The fat layer uses that study's combined skin-adipose
-  parameters. Silicone, cushion and TPU-infill properties are uncalibrated
-  assumptions.
-* The behaviour is quasi-static hyperelastic. It does not include
-  viscoelasticity, perfusion, active muscle, damage or residual stress.
+* Skin uses an HGO fit to excised back skin from elderly donors (Ni Annaidh
+  2012, uniaxial tension). Its bulk modulus is approximated as 100 x shear,
+  the same ratio used for fat and muscle.
+* Fat and muscle use Ogden fits from inverse FE of in-vivo indentation of a
+  single transtibial residuum (Sengeh 2016). The fat layer uses that study's
+  combined skin-adipose parameters.
+* The silicone pads stand in for medical-grade gel-liner silicone. They use
+  a neo-Hookean model with shear modulus 23 kPa, the median of five
+  silicone-gel liner products in Sanders 2004 (range 19 to 53 kPa). This is
+  a literature approximation, not a test of the team's silicone. It also
+  misses the strong stiffening gels show in compression, so pad compression
+  under high pressure is overestimated.
+* The distal cushion is 85A TPU printed with 2 walls and 8% gyroid infill.
+  It is modelled as one homogenised compressible solid: E = 71 kPa,
+  Poisson ratio 0.3. That comes from Gibson-Ashby scaling, E* = Es (0.08)^2,
+  with Es = 11.1 MPa from the NinjaFlex 85A fit; the plausible range is 36
+  to 252 kPa. The model does not capture the lattice's plateau and
+  densification at large compression, and the walls are not resolved.
+* All materials are quasi-static hyperelastic: no viscoelasticity,
+  perfusion, active muscle, damage or residual stress.
 
 ## Numerical
 * Peak stresses and strains near bony prominences and contact edges are
@@ -87,8 +99,8 @@ represents the real limb). No validation has been performed.
   entered a frictional stick/slip limit cycle at the first increment. The
   synthetic pull-out converged. Frictionless contact did not converge past
   about 49 N on the synthetic model.
-* Knee model at 75 N: 15 of 58,600 elements (0.03%) have a volume ratio J
-  below 0.8 (lowest 0.68, falling to 0.58 by the end of pull-out). They sit
-  in one small patch of muscle, 126 to 154 mm above the distal end. Muscle
-  is nearly incompressible, so this is flagged as a possible mesh or
-  local-loading artefact rather than reported as a result.
+* Knee model at 75 N: 9 of 58,612 elements (0.02%) have a volume ratio J
+  below 0.8 (lowest 0.66, then 0.64 at the end of pull-out). They sit in one
+  small patch of muscle, 133 to 154 mm above the distal end. Muscle is nearly
+  incompressible, so this is flagged as a possible mesh or local-loading
+  artefact rather than reported as a result.

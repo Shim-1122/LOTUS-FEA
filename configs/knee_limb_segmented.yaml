@@ -1,11 +1,11 @@
 # Knee FEA: full residual limb from the supplied segmented STLs (data/limb).
-# Same materials, socket, contact, loads and solver settings as the earlier
-# supplied-limb run; what changed is the anatomy:
+# Same materials, contact, loads and solver settings as the earlier
+# supplied-limb run; the socket now has four petals (current design), and the anatomy changed:
 #   * skin and fat thickness are MEASURED per skin vertex from the segmented
 #     inner skin surface and the outer muscle surface (no longer assumed);
 #   * four bones, including a candidate tibia (part_1) that was missing before.
 # Bone identities are heuristic (shape/size/position); confirm them.
-run_name: knee_limb_segmented_T75
+run_name: knee_limb_4petal_T75
 geometry:
   source: files
   patient_data: false   # published by the owner's decision (see data/limb/README.md)
@@ -66,7 +66,7 @@ supports:
 load_model: resolved_contact
 socket:
   enabled: true
-  n_petals: 6
+  n_petals: 4   # current design: four petals, centred anterior, medial/lateral and posterior (90, 180, 270, 0 deg)
   gap_deg: 8
   z_base:
     value: 40

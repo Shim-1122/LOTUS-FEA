@@ -2,7 +2,9 @@
 
 These are surface meshes (binary STL, **millimetres**) of one below-knee
 residual limb with the knee, exported from a CAD model named
-"Limb w- Bone". The owner chose to publish them with this repository.
+"Limb w- Bone". The team built the model from approximations of an MRI
+scan, so it is MRI-informed CAD rather than a direct segmentation of image
+voxels. The owner chose to publish it with this repository.
 `SHA256SUMS` pins every file, and the run manifest records the hashes it
 used.
 
@@ -30,6 +32,6 @@ Measured from these files:
 
 **The bone labels are heuristic.** They come from size, shape and position
 (for example, part_4 is slender and lies posterolateral to part_1), and
-nobody has confirmed them. Neither the source of the segmentation (imaging
-or hand-built CAD) nor its accuracy is verified, so measured does not mean
+nobody has confirmed them. Because the layers and bones were approximated from MRI, their accuracy
+against the scan has not been quantified, so measured does not mean
 validated.

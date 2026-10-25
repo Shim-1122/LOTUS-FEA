@@ -1,7 +1,9 @@
 # Results status (generated)
 
 All numbers below are NUMERICAL results for the SYNTHETIC limb and a PROVISIONAL socket, with the 75 N EXAMPLE strand tension.
-They are not clinical predictions, and they say nothing about grip or tissue safety. Supplied (patient-derived) runs stay private.
+They are not clinical predictions, and they say nothing about grip or tissue safety.
+
+> These synthetic runs predate the 2026-10-25 material update. They used assumed silicone-pad (shear modulus 100 kPa) and cushion (20 kPa) properties and a six-petal socket. The knee model results are in [KNEE_RESULTS.md](KNEE_RESULTS.md).
 
 ## Verification (47/47 checks passed)
 
