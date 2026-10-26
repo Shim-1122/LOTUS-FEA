@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LOTUS Gait Tester</title>
+<meta name="description" content="Screening aid: how the LOTUS V5 petal socket's grip compares with gait loads at a chosen lace tension, built on LOTUS-FEA results.">
+<style>
+:root{
+  --bg:#f3f5f7; --panel:#ffffff; --ink:#17202a; --muted:#5b6876; --line:#d7dde3;
+  --accent:#1f6f8b; --cap:#2e7d4f; --warn:#b4401b; --caution:#a56a00; --shade:rgba(91,104,118,.10);
+  --sans:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11161b; --panel:#171e25; --ink:#e6ecf1; --muted:#97a5b2; --line:#2a343e;
+  --accent:#5fb3d0; --cap:#6fcf97; --warn:#f08a5d; --caution:#e8b04a; --shade:rgba(151,165,178,.12); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161b; --panel:#171e25; --ink:#e6ecf1; --muted:#97a5b2; --line:#2a343e;
+  --accent:#5fb3d0; --cap:#6fcf97; --warn:#f08a5d; --caution:#e8b04a; --shade:rgba(151,165,178,.12); color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--sans)}
+.wrap{max-width:1280px;margin:0 auto;padding-block:16px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:14px}
+h1{font-size:1.45rem;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px;font-weight:600}
+.sub{color:var(--muted);margin:2px 0 0;font-size:.92rem}
+.banner{border:1.5px solid var(--warn);border-radius:8px;padding:10px 14px;background:var(--panel);font-size:.92rem}
+.banner b{color:var(--warn)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.grid-top{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px}
+.grid-bot{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px}
+@media (max-width:860px){.grid-top,.grid-bot{grid-template-columns:minmax(0,1fr)}}
+#view{position:relative;width:100%;aspect-ratio:4/3.2;max-width:100%;border-radius:8px;overflow:hidden;background:var(--bg);touch-action:none;cursor:grab}
+#view:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#view canvas{display:block;width:100%;height:100%}
+.viewnote{font-size:.8rem;color:var(--muted);margin:8px 0 0}
+.legend{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+.ramp{height:10px;width:140px;border-radius:3px;background:linear-gradient(90deg,#2b7bb9,#4fb39a,#e3b23c,#d9572b,#a01d1d)}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px 20px}
+.ctl label{display:flex;justify-content:space-between;gap:8px;font-weight:600;font-size:.9rem}
+.ctl .val{font-family:var(--mono);font-weight:600}
+.ctl small{display:block;color:var(--muted);font-size:.78rem;line-height:1.35;margin-top:3px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=number],select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 6px;width:100%}
+button{font:inherit;font-weight:600;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 12px;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.check{display:flex;gap:8px;align-items:center;font-weight:600;font-size:.9rem}
+.ticks{position:relative;height:16px;font-size:.7rem;color:var(--muted)}
+.ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.rating{position:relative;height:18px;border-radius:4px;background:var(--bg);border:1px solid var(--line);margin-top:6px;overflow:hidden}
+.rating .band{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(45deg,transparent 0 4px,color-mix(in srgb,var(--warn) 35%,transparent) 4px 7px)}
+.rating .fill{position:absolute;top:0;bottom:0;left:0;background:color-mix(in srgb,var(--accent) 35%,transparent)}
+.rating .mk{position:absolute;top:0;bottom:0;width:2px;background:var(--ink)}
+.phases{display:flex;font-size:.7rem;color:var(--muted);margin-top:2px}
+.phases span{border-left:1px solid var(--line);padding-left:3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.readouts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ro{border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+.ro .k{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.ro .v{font-family:var(--mono);font-size:1.25rem;font-weight:600}
+.ro .n{font-size:.75rem;color:var(--muted)}
+.pill{display:inline-block;font-size:.72rem;font-weight:700;border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:2px;border:1.5px solid}
+.ok{color:var(--cap);border-color:var(--cap)} .bad{color:var(--warn);border-color:var(--warn)} .mid{color:var(--caution);border-color:var(--caution)}
+.phase-now{font-size:.95rem;margin-bottom:8px}
+.phase-now b{font-family:var(--mono)}
+.cardgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.card{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.card .k{font-size:.78rem;color:var(--muted)}
+.card .v{font-family:var(--mono);font-size:1.35rem;font-weight:700;margin-top:2px}
+.card.hero{border:2px solid var(--accent)}
+.card.hero .v{font-size:1.8rem;color:var(--accent)}
+.card .n{font-size:.78rem;color:var(--muted);margin-top:2px}
+.plot{width:100%;height:280px;display:block}
+.plot.small{height:240px}
+.warnline{border-left:3px solid var(--warn);padding:6px 10px;background:color-mix(in srgb,var(--warn) 8%,transparent);border-radius:0 6px 6px 0;font-size:.88rem;margin-top:8px}
+.src{font-size:.82rem;color:var(--muted)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+summary{cursor:pointer;font-weight:700}
+details .body{margin-top:8px;font-size:.92rem;max-width:80ch}
+details code,.mono{font-family:var(--mono);font-size:.85em}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;font-size:.85rem;min-width:520px}
+th,td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600}
+.vv{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.vv h3{font-size:.95rem;margin:0 0 4px}
+.est{font-size:.72rem;font-weight:700;color:var(--caution);text-transform:uppercase;letter-spacing:.04em}
+footer{font-size:.8rem;color:var(--muted)}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>LOTUS Gait Tester</h1>
+    <p class="sub">LOTUS V5 transtibial petal socket: grip vs gait load at a chosen RevoFit lace tension. Built on
+      <a href="https://github.com/Shim-1122/LOTUS-FEA" target="_blank" rel="noopener">LOTUS-FEA</a> results (FEBio 4.13, mm / N / MPa). This page runs no finite element solve.</p>
+  </header>
+
+  <div class="banner" role="note"><b>Screening aid built on LOTUS-FEA numerical results. No clinical validation.</b>
+    A converged or passing result does not establish grip, comfort, or tissue safety.</div>
+
+  <section class="panel" aria-labelledby="h-ctl">
+    <h2 id="h-ctl">Inputs</h2>
+    <div class="controls">
+      <div class="ctl">
+        <label for="tension">Lace tension per strand <span class="val" id="tensionVal"></span></label>
+        <input type="range" id="tension" min="10" max="100" step="0.5" value="60" aria-describedby="tensionNote">
+        <div class="ticks" aria-hidden="true">
+          <span style="left:0%">10</span><span style="left:16.67%">25 FEA</span><span style="left:55.56%">60 FEA*</span><span style="left:100%">100</span>
+        </div>
+        <div class="rating" aria-hidden="true" title="0 to 200 lbf RevoFit rating">
+          <div class="fill" id="ratingFill"></div>
+          <div class="band" style="left:60%;right:0"></div>
+          <div class="mk" style="left:12.5%"></div><div class="mk" style="left:30%"></div>
+        </div>
+        <small id="tensionNote"></small>
+      </div>
+      <div class="ctl">
+        <label for="pct">Cycle position <span class="val" id="pctVal"></span></label>
+        <input type="range" id="pct" min="0" max="100" step="0.5" value="12">
+        <div class="phases" id="phaseStrip" aria-hidden="true"></div>
+        <div class="row" style="margin-top:6px">
+          <button id="play" type="button" aria-pressed="false">Play</button>
+          <label class="src" for="speed">Speed</label>
+          <select id="speed" style="width:auto"><option value="0.25">0.25x</option><option value="0.5">0.5x</option><option value="1" selected>1x (1.1 s / cycle)</option><option value="2">2x</option></select>
+        </div>
+      </div>
+      <div class="ctl">
+        <label for="activity">Activity</label>
+        <select id="activity"><option value="walk">Level walking (gait cycle)</option><option value="sts">Sit-to-stand (movement cycle)</option></select>
+        <small>Load curves are <span class="est">estimates</span>; editable arrays at the top of the page script.</small>
+        <label class="check" style="margin-top:8px"><input type="checkbox" id="relief"> Fibular relief (lateral petal scallop)</label>
+        <small>Changes the FEA reference (per-petal load split, tissue-failure tension). Approximate cut traced from the team sketch.</small>
+      </div>
+      <div class="ctl">
+        <label for="mu">Skin-silicone friction μ <span class="val" id="muVal"></span></label>
+        <input type="range" id="mu" min="0.5" max="0.8" step="0.01" value="0.5">
+        <small><span class="est">estimate</span> Screening friction value, not measured. FEA runs used 0.5.</small>
+      </div>
+      <div class="ctl">
+        <label for="mass">Body mass after amputation <span class="val" id="massVal"></span></label>
+        <input type="number" id="mass" min="30" max="200" step="0.1" value="78.1">
+        <small><span class="est">estimate</span> 81.6 kg before amputation minus 3.5 kg (Winter segment fractions).</small>
+        <label for="pmass" style="margin-top:6px">Prosthesis mass <span class="val" id="pmassVal"></span></label>
+        <input type="number" id="pmass" min="0.3" max="6" step="0.1" value="1.5">
+        <small><span class="est">assumed</span> Socket, pylon and foot; weigh the device.</small>
+      </div>
+      <div class="ctl">
+        <label for="thresh">Pressure flag threshold <span class="val" id="threshVal"></span></label>
+        <input type="number" id="thresh" min="20" max="2000" step="10" value="300">
+        <small>User-set screening value. No validated tissue tolerance is claimed; 300 kPa is an arbitrary default.</small>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid-top">
+    <section class="panel" aria-labelledby="h-3d">
+      <h2 id="h-3d">Socket view</h2>
+      <div id="view" tabindex="0" role="img" aria-label="3D view of the limb and four petals, coloured by estimated contact pressure. Drag or use arrow keys to rotate."></div>
+      <div class="legend"><span>pad pressure</span><span>0</span><span class="ramp"></span><span id="legMax"></span>
+        <span>· hatched band = slip-risk proxy (load / capacity), not FEA slip area</span></div>
+      <p class="viewnote" id="viewNote">Simple parametric geometry (tapered limb, four cylindrical petal segments), not the real STL/STEP meshes. Petal closure is exaggerated for visibility.</p>
+    </section>
+    <section class="panel" aria-labelledby="h-ro" aria-live="polite">
+      <h2 id="h-ro">At this point of the cycle</h2>
+      <div class="phase-now" id="phaseNow"></div>
+      <div class="readouts">
+        <div class="ro"><div class="k">Applied axial load</div><div class="v" id="roLoad"></div><div class="n" id="roLoadN"></div></div>
+        <div class="ro"><div class="k">Holding capacity</div><div class="v" id="roCap"></div><div class="n" id="roCapN"></div></div>
+        <div class="ro"><div class="k">Safety margin</div><div class="v" id="roMargin"></div><div class="n">capacity / load; target ≥ 1.3</div></div>
+        <div class="ro"><div class="k">Slip</div><div class="v" id="roSlip"></div><div class="n">gross slip when load exceeds capacity</div></div>
+        <div class="ro"><div class="k">Distal end share</div><div class="v" id="roDistal"></div><div class="n" id="roDistalN"></div></div>
+        <div class="ro"><div class="k">Petal share</div><div class="v" id="roPetal"></div><div class="n">requirement ≥ 85%</div></div>
+        <div class="ro" style="grid-column:1/-1"><div class="k">Estimated peak contact pressure</div><div class="v" id="roP"></div><div class="n" id="roPN"></div></div>
+      </div>
+      <div class="warnline" id="feaWarn" hidden></div>
+      <p class="src" id="capSrc" style="margin:8px 0 0"></p>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="h-sum">
+    <h2 id="h-sum">Summary at the current inputs</h2>
+    <div class="cardgrid">
+      <div class="card hero"><div class="k">Minimum tension to hold the full cycle</div><div class="v" id="sMin"></div><div class="n" id="sMinN"></div></div>
+      <div class="card"><div class="k">Worst phase</div><div class="v" id="sWorst"></div><div class="n" id="sWorstN"></div></div>
+      <div class="card"><div class="k">Margin at 60 lbf</div><div class="v" id="s60"></div><div class="n" id="s60N"></div></div>
+      <div class="card"><div class="k">Tension at which distal share exceeds 15%</div><div class="v" id="sDist"></div><div class="n" id="sDistN"></div></div>
+    </div>
+    <p class="src" id="xcheck" style="margin:10px 0 0"></p>
+  </section>
+
+  <div class="grid-bot">
+    <section class="panel" aria-labelledby="h-p1">
+      <h2 id="h-p1">Applied load vs holding capacity across the cycle</h2>
+      <canvas class="plot" id="plotCycle" role="img" aria-label="Applied axial load and holding capacity versus percent of cycle. Click to move the cycle position."></canvas>
+      <p class="src">Positive = limb pushed into the socket (stance); negative = socket pulled off the limb (swing). Shaded red where load exceeds capacity. Click the plot to scrub.</p>
+    </section>
+    <section class="panel" aria-labelledby="h-p2">
+      <h2 id="h-p2">Margin vs lace tension</h2>
+      <canvas class="plot small" id="plotTension" role="img" aria-label="Safety margin versus lace tension at the current cycle position, with the minimum safe tension marked."></canvas>
+      <p class="src" id="p2note"></p>
+    </section>
+  </div>
+
+  <details>
+    <summary>How the numbers are derived</summary>
+    <div class="body">
+      <p>Sources: <span class="mono">docs/GRIP_ESTIMATE.md</span>, the README assumptions table and the FEA run summaries (<span class="mono">scripts/stance_check.py</span>). Constants live in <span class="mono">CONST</span> and <span class="mono">RESULTS</span> at the top of this page's script.</p>
+      <div class="tbl"><table>
+        <tr><th>Quantity</th><th>Formula</th><th>Constant and basis</th></tr>
+        <tr><td>Standing weight W</td><td>(m<sub>body</sub> + m<sub>prosthesis</sub>) g</td><td>78.1 kg (Winter segment fractions) + 1.5 kg (assumed); g = 9.81 m/s²</td></tr>
+        <tr><td>Stance load into socket</td><td>f(%)·W − m<sub>prosthesis</sub> g, floored at 0</td><td>f(%) double-hump curve, peaks 1.2 (GAIT_CURVE, estimate) → 923 N peak</td></tr>
+        <tr><td>Swing pull-out</td><td>s(%)·m<sub>prosthesis</sub>(g + ω²r)</td><td>ω = 6.5 rad/s, r = 0.30 m (estimate) → 34 N peak</td></tr>
+        <tr><td>Sit-to-stand load</td><td>f(%)·W</td><td>STS_CURVE peak 0.6 → about 470 N (estimate)</td></tr>
+        <tr><td>Pad normal force from lace</td><td>N = k<sub>N</sub>·T</td><td>k<sub>N</sub> = 8.1 N per N of line tension (LOTUS V5 tube-lace run)</td></tr>
+        <tr><td>Friction capacity, petals</td><td>F<sub>petals</sub> = μ·k<sub>N</sub>·T</td><td>μ: screening value (0.5 in FEA)</td></tr>
+        <tr><td>Stance capacity (friction model)</td><td>F<sub>petals</sub> / (1 − s<sub>d</sub>)</td><td>s<sub>d</sub> = 0.15 (design limit on distal share)</td></tr>
+        <tr><td>Pull-out capacity</td><td>F<sub>petals</sub> (the distal end cannot resist pull-off)</td><td></td></tr>
+        <tr><td>Stance capacity (FEA mode)</td><td>linear in T between RESULTS at 25 and 60 lbf, × μ/0.5</td><td>used only when both capacities are filled in; outside 25 to 60 lbf it is extrapolated and shaded</td></tr>
+        <tr><td>Margin</td><td>capacity / |load|</td><td>target 1.3 (team headroom); slip when &lt; 1</td></tr>
+        <tr><td>Minimum safe tension</td><td>smallest T with margin ≥ 1 at every cycle point</td><td>searched 1 to 300 lbf in 0.5 lbf steps</td></tr>
+        <tr><td>Distal share</td><td>RESULTS distal share, interpolated in T when two values exist</td><td>one value (25 lbf) → held constant and flagged as not simulated elsewhere</td></tr>
+        <tr><td>Peak contact pressure</td><td>P<sub>peak</sub> = c<sub>pk</sub>·(k<sub>N,FEA</sub>·T + c<sub>t</sub>·F<sub>petals,axial</sub>) / A</td><td>A = 26 233 mm², k<sub>N,FEA</sub> = 8.7, c<sub>pk</sub> = 13.0 (peak / mean), c<sub>t</sub> = 1.3 (taper), all from the 25 lbf run</td></tr>
+        <tr><td>Per-petal pressure (3D colours)</td><td>P<sub>peak</sub> × (F<sub>i</sub>/A<sub>i</sub>) / max(F/A)</td><td>per-petal normal forces from the 25 lbf run (relief off) or the relief run at 30 lbf (relief on)</td></tr>
+      </table></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>Verification vs validation</summary>
+    <div class="body vv">
+      <div><h3>Verification (equations solved correctly)</h3>
+        <p>LOTUS-FEA runs 47 benchmark checks (<span class="mono">rlfea verify</span>) against analytical or independent references: hyperelastic stresses, Coulomb sliding, hinges, cable force balance, restart, near-incompressible locking. Each FEA run checks equilibrium (force imbalance) and element inversion. This page's arithmetic is a set of closed-form estimates listed above; it is not an FEA solve.</p></div>
+      <div><h3>Validation (model represents a real limb)</h3>
+        <p><b>None done.</b> Tissue properties are literature fits from other subjects, the limb is CAD from MRI-based approximations, friction is a screening value, contact is penalty-based, and the gait loads are textbook estimates. No socket has been tested on a patient or bench rig against these numbers.</p></div>
+    </div>
+  </details>
+
+  <details id="todo">
+    <summary>RESULTS fields still empty</summary>
+    <div class="body" id="todoBody"></div>
+  </details>
+
+  <footer>LOTUS FEA · <a href="index.html">results page</a> · <a href="viewer.html">3D FEA viewer</a> · MIT licence. Estimates are labelled; replace them with measurements when available.</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+"use strict";
+/* ======================================================================
+   EDITABLE DATA. Every value here is an estimate unless marked FEA.
+   ====================================================================== */
+// Walking: vertical load as a multiple of standing weight W, by % of gait cycle (stance 0-60%).
+// Double hump (loading response and push-off peaks at 1.2, midstance valley). Estimate.
+const GAIT_CURVE = [[0,0],[2,0.30],[6,0.85],[12,1.20],[18,1.05],[30,0.78],[40,0.95],[48,1.20],[55,0.75],[60,0]];
+// Swing: pull-out as a fraction of its peak, % of gait cycle 60-100. Estimate.
+const SWING_CURVE = [[60,0],[68,0.25],[78,0.55],[88,1.00],[95,0.50],[100,0]];
+// Sit-to-stand: load as a multiple of W across the movement (seat-off peak about 0.6 W). Estimate.
+const STS_CURVE = [[0,0.10],[20,0.25],[35,0.50],[42,0.60],[55,0.55],[75,0.50],[100,0.50]];
+const PHASES_WALK = [[0,13,"Heel strike / loading response"],[13,31,"Midstance"],[31,50,"Terminal stance"],[50,60,"Push-off"],[60,100,"Swing"]];
+const PHASES_STS  = [[0,30,"Seated, trunk lean"],[30,50,"Seat-off"],[50,80,"Rise"],[80,100,"Standing"]];
+
+const CONST = {
+  g: 9.81, LBF: 4.4482216,
+  omega: 6.5, r_com: 0.30,             // swing knee angular velocity (rad/s) and prosthesis COM distance (m), estimates
+  kN: 8.1,                             // pad normal force per N of line tension (LOTUS V5 tube-lace run), FEA
+  distal_design: 0.15,                 // distal share assumed by the friction model (team limit)
+  target_margin: 1.3,                  // team headroom over the stance peak
+  rating_lbf: 200, warn_lbf: 120,      // RevoFit rating stated by the team; caution band above 120 lbf
+  mu_fea: 0.5,                         // friction used in every FEA run
+};
+
+/* ======================================================================
+   RESULTS: fill from docs/RESULTS.md / docs/KNEE_RESULTS.md and
+   `python scripts/stance_check.py runs/<run>` output. null = not available.
+   ====================================================================== */
+const RESULTS = {
+  t25: {                               // run lotus_v5_stance_25lbf (incompressible muscle, no relief, coarse mesh)
+    lace_lbf: 25,
+    axial_capacity_N: null,            // axial load at gross slip. NOT REACHED: run failed after 3 mm of push
+    axial_lower_bound_N: 216,          // largest axial load carried before the run stopped (3.0 mm push)
+    distal_share: 0.19,                // at the last converged push state (19 to 25% during the run)
+    petal_share: 0.81,
+    slip_area_fraction: 0.125,
+    peak_pressure_kPa: 647,            // at 3 mm push; 478 kPa at the end of tightening
+    min_J: 0.595,
+  },
+  t60: {                               // 60 lbf runs: FAILED during tightening, push never reached
+    lace_lbf: 60,
+    axial_capacity_N: null, axial_lower_bound_N: null, distal_share: null, petal_share: null,
+    slip_area_fraction: null, peak_pressure_kPa: null, min_J: null,
+  },
+  // Highest lace tension at which FEA tightening converged (tissue inversion at pad edges beyond it).
+  fea_limit_lbf: { no_relief: 28.4, relief: 32.7 },
+  // Contact calibration for the pressure estimate (25 lbf run at the end of tightening).
+  contact: { area_mm2: 26233, kN_fea: 8.7, peak_over_mean: 13.0, taper_normal_per_axial: 1.3 },
+  // Per-petal normal force (N) and meshed pad area (mm2): anterior, medial, posterior, lateral.
+  petal_force: { no_relief: [235, 277, 163, 266], relief: [287, 310, 196, 351] },
+  petal_area: [6620, 7171, 6494, 6219],
+};
+
+/* ====================================================================== */
+const $ = id => document.getElementById(id);
+const S = { T: 60, pct: 12, mu: 0.5, relief: false, body: 78.1, prot: 1.5, act: "walk", thresh: 300, playing: false, speed: 1 };
+const fmt = (x, d = 0) => (x == null || !isFinite(x)) ? "n/a" : x.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+function interp(tab, x) {
+  if (x <= tab[0][0]) return tab[0][1];
+  for (let i = 1; i < tab.length; i++) if (x <= tab[i][0]) {
+    const [x0, y0] = tab[i - 1], [x1, y1] = tab[i]; return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
+  }
+  return tab[tab.length - 1][1];
+}
+const W = () => (S.body + S.prot) * CONST.g;
+const pullPeak = () => S.prot * (CONST.g + CONST.omega ** 2 * CONST.r_com);
+function loadAt(p) {                   // N; + into socket, - pulled off
+  if (S.act === "sts") return interp(STS_CURVE, p) * W();
+  if (p <= 60) return Math.max(0, interp(GAIT_CURVE, p) * W() - S.prot * CONST.g);
+  return -interp(SWING_CURVE, p) * pullPeak();
+}
+const feaCapacityReady = () => RESULTS.t25.axial_capacity_N != null && RESULTS.t60.axial_capacity_N != null;
+function distalShare(Tlbf) {
+  const pts = [RESULTS.t25, RESULTS.t60].filter(r => r.distal_share != null).map(r => [r.lace_lbf, r.distal_share]);
+  if (!pts.length) return { v: CONST.distal_design, extrap: true, src: "design limit (no FEA value)" };
+  if (pts.length === 1) return { v: pts[0][1], extrap: Math.abs(Tlbf - pts[0][0]) > 0.25, src: `FEA at ${pts[0][0]} lbf, held constant` };
+  const [[a, sa], [b, sb]] = pts;
+  return { v: Math.min(0.95, Math.max(0, sa + (sb - sa) * (Tlbf - a) / (b - a))), extrap: Tlbf < a || Tlbf > b, src: "FEA, interpolated" };
+}
+function capacity(Tlbf) {
+  const T = Tlbf * CONST.LBF;
+  if (feaCapacityReady()) {
+    const a = RESULTS.t25, b = RESULTS.t60;
+    const c = (a.axial_capacity_N + (b.axial_capacity_N - a.axial_capacity_N) * (Tlbf - a.lace_lbf) / (b.lace_lbf - a.lace_lbf)) * S.mu / CONST.mu_fea;
+    const ds = distalShare(Tlbf).v;
+    return { stance: Math.max(0, c), pull: Math.max(0, c * (1 - ds)), mode: "fea", extrap: Tlbf < a.lace_lbf || Tlbf > b.lace_lbf };
+  }
+  const petals = S.mu * CONST.kN * T;
+  return { stance: petals / (1 - CONST.distal_design), pull: petals, mode: "friction", extrap: Tlbf < 25 || Tlbf > 60 };
+}
+function marginAt(Tlbf, p) {
+  const L = loadAt(p), c = capacity(Tlbf);
+  if (Math.abs(L) < 5) return Infinity;
+  return (L >= 0 ? c.stance : c.pull) / Math.abs(L);
+}
+const PTS = Array.from({ length: 201 }, (_, i) => i * 0.5);
+function cycleMin(Tlbf) {
+  let m = Infinity, at = 0;
+  for (const p of PTS) { const v = marginAt(Tlbf, p); if (v < m) { m = v; at = p; } }
+  return { m, at };
+}
+function minTension(target) {
+  for (let t = 1; t <= 300; t += 0.5) if (cycleMin(t).m >= target) return t;
+  return null;
+}
+function peakPressure(Tlbf, L) {
+  const c = RESULTS.contact, ds = distalShare(Tlbf).v;
+  const N = c.kN_fea * Tlbf * CONST.LBF + c.taper_normal_per_axial * Math.max(0, L) * (1 - ds);
+  return c.peak_over_mean * N / c.area_mm2 * 1000;    // kPa
+}
+function phaseName(p) {
+  const ph = S.act === "sts" ? PHASES_STS : PHASES_WALK;
+  for (const [a, b, n] of ph) if (p >= a && p < b) return n;
+  return ph[ph.length - 1][2];
+}
+const feaLimit = () => S.relief ? RESULTS.fea_limit_lbf.relief : RESULTS.fea_limit_lbf.no_relief;
+const pill = (cls, txt) => `<span class="pill ${cls}">${txt}</span>`;
+
+/* ---------- readouts, summary ---------- */
+function update() {
+  const T = S.T, TN = T * CONST.LBF;
+  $("tensionVal").textContent = `${fmt(T, 1)} lbf · ${fmt(TN)} N`;
+  $("ratingFill").style.width = `${Math.min(100, T / CONST.rating_lbf * 100)}%`;
+  $("tensionNote").innerHTML = `${fmt(T / CONST.rating_lbf * 100)}% of the ${CONST.rating_lbf} lbf RevoFit rating (60 lbf = 30%). Hatched: above ${CONST.warn_lbf} lbf caution band. ` +
+    `Markers: 25 lbf (FEA, reached push) and 60 lbf (FEA attempted*, failed during tightening at ${RESULTS.fea_limit_lbf.no_relief} to ${RESULTS.fea_limit_lbf.relief} lbf).`;
+  $("pctVal").textContent = `${fmt(S.pct, 1)}%`;
+  $("muVal").textContent = fmt(S.mu, 2);
+  $("massVal").textContent = `${fmt(S.body, 1)} kg`;
+  $("pmassVal").textContent = `${fmt(S.prot, 1)} kg`;
+  $("threshVal").textContent = `${fmt(S.thresh)} kPa`;
+
+  const L = loadAt(S.pct), cap = capacity(T), ds = distalShare(T), mg = marginAt(T, S.pct);
+  const into = L >= 0, capNow = into ? cap.stance : cap.pull;
+  $("phaseNow").innerHTML = `<b>${fmt(S.pct, 1)}%</b> · ${phaseName(S.pct)} · ${S.act === "sts" ? "sit-to-stand" : "walking"}`;
+  $("roLoad").textContent = `${fmt(Math.abs(L))} N`;
+  $("roLoadN").textContent = Math.abs(L) < 5 ? "about zero" : into ? "into the socket (stance)" : "pulling the socket off (swing)";
+  $("roCap").innerHTML = `${fmt(capNow)} N` + (cap.extrap ? pill("mid", "extrapolated") : "");
+  $("roCapN").textContent = into ? `stance, ${cap.mode === "fea" ? "FEA interpolation" : "friction estimate"}` : "pull-out: petal friction only";
+  const slip = isFinite(mg) && mg < 1;
+  $("roMargin").innerHTML = isFinite(mg) ? `${fmt(mg, 2)}×` + (mg < 1 ? pill("bad", "✕ below 1") : mg < CONST.target_margin ? pill("mid", "▲ below 1.3") : pill("ok", "✓ ok")) : "no load";
+  $("roSlip").innerHTML = slip ? `YES${pill("bad", "✕ slip")}` : `no${pill("ok", "✓")}`;
+  const dsFlag = ds.v > 0.15;
+  $("roDistal").innerHTML = `${fmt(ds.v * 100)}%` + (dsFlag ? pill("bad", "✕ > 15%") : pill("ok", "✓ < 15%")) + (ds.extrap ? pill("mid", "not simulated") : "");
+  $("roDistalN").textContent = ds.src;
+  const ps = 1 - ds.v;
+  $("roPetal").innerHTML = `${fmt(ps * 100)}%` + (ps < 0.85 ? pill("bad", "✕ < 85%") : pill("ok", "✓"));
+  const P = peakPressure(T, L);
+  $("roP").innerHTML = `${fmt(P)} kPa` + (P > S.thresh ? pill("bad", `✕ over ${fmt(S.thresh)}`) : pill("ok", "✓ under threshold")) + (S.T > feaLimit() || S.T < 25 ? pill("mid", "extrapolated") : "");
+  $("roPN").textContent = `estimate from lace and petal load (25 lbf FEA calibration); FEA peak was ${RESULTS.t25.peak_pressure_kPa} kPa at 25 lbf + 3 mm push. Penalty contact: approximate.`;
+  const fl = feaLimit();
+  $("feaWarn").hidden = T <= fl;
+  $("feaWarn").innerHTML = `<b>Beyond the FEA tissue limit.</b> In LOTUS-FEA the ${S.relief ? "relief" : "no-relief"} socket failed during tightening at ${fl} lbf: muscle under the pad edges inverted. Numbers above ${fl} lbf are estimates only. Flaring the petal lips is the proposed fix.`;
+  $("capSrc").textContent = cap.mode === "fea" ? "Capacity: FEA interpolation between 25 and 60 lbf (RESULTS)." :
+    "Capacity: friction-only estimate, because RESULTS has no FEA slip capacity yet (the 25 lbf push stopped at a 216 N lower bound; 60 lbf never reached the push).";
+
+  // summary
+  const tHold = minTension(1), tTarget = minTension(CONST.target_margin);
+  $("sMin").textContent = tHold == null ? "> 300 lbf" : `${fmt(tHold, 1)} lbf`;
+  $("sMinN").innerHTML = (tHold != null ? `${fmt(tHold * CONST.LBF)} N. ` : "") + `With 1.3× headroom: ${tTarget == null ? "> 300" : fmt(tTarget, 1)} lbf. ` +
+    ((tHold != null && tHold > fl) ? `<b>Above the ${fl} lbf FEA tissue limit.</b>` : "") + (cap.mode === "friction" ? " Friction estimate." : "");
+  const cm = cycleMin(T);
+  $("sWorst").textContent = isFinite(cm.m) ? phaseName(cm.at) : "n/a";
+  $("sWorstN").textContent = isFinite(cm.m) ? `at ${fmt(cm.at, 1)}%: margin ${fmt(cm.m, 2)}× at ${fmt(T, 1)} lbf` : "";
+  const m60 = cycleMin(60);
+  $("s60").innerHTML = `${fmt(m60.m, 2)}×` + (m60.m < 1 ? pill("bad", "✕") : m60.m < 1.3 ? pill("mid", "▲") : pill("ok", "✓"));
+  $("s60N").textContent = `minimum over the cycle (${phaseName(m60.at)}). FEA did not converge at 60 lbf; this is the ${cap.mode === "fea" ? "FEA-interpolated" : "friction"} estimate.`;
+  const dpts = [RESULTS.t25, RESULTS.t60].filter(r => r.distal_share != null);
+  if (dpts.length >= 2) {
+    const [a, b] = dpts, t15 = a.lace_lbf + (0.15 - a.distal_share) * (b.lace_lbf - a.lace_lbf) / (b.distal_share - a.distal_share);
+    const below = (b.distal_share - a.distal_share) < 0;
+    $("sDist").textContent = isFinite(t15) ? `${below ? "below" : "above"} ${fmt(t15, 1)} lbf` : "n/a";
+    $("sDistN").textContent = "linear between the two FEA values";
+  } else if (dpts.length === 1) {
+    $("sDist").textContent = dpts[0].distal_share > 0.15 ? `exceeds at ${dpts[0].lace_lbf} lbf` : `below at ${dpts[0].lace_lbf} lbf`;
+    $("sDistN").textContent = `${fmt(dpts[0].distal_share * 100)}% at ${dpts[0].lace_lbf} lbf (FEA). The trend with tension needs the 60 lbf distal share.`;
+  } else { $("sDist").textContent = "n/a"; $("sDistN").textContent = "needs FEA distal shares"; }
+  const tf = mu => 1200 * (1 - CONST.distal_design) / (mu * CONST.kN) / CONST.LBF;
+  $("xcheck").innerHTML = `Friction-only cross-check (docs/GRIP_ESTIMATE.md): ${fmt(tf(0.8))} to ${fmt(tf(0.5))} lbf needed for 1.2 kN at μ 0.8 to 0.5; at μ = ${fmt(S.mu, 2)} it is ${fmt(tf(S.mu), 1)} lbf. ` +
+    `Peak load in this cycle: ${fmt(Math.max(...PTS.map(loadAt)))} N; design target 1,200 N.`;
+  drawCycle(); drawTension(); update3D();
+}
+
+/* ---------- plots ---------- */
+function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function setup(cv) {
+  const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  cv.width = Math.max(1, r.width * d); cv.height = Math.max(1, r.height * d);
+  const c = cv.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0); c.font = `11px ${css("--sans")}`;
+  return { c, w: r.width, h: r.height };
+}
+function axes(c, w, h, m, xr, yr, xl, yl, xt, yt) {
+  const X = x => m.l + (x - xr[0]) / (xr[1] - xr[0]) * (w - m.l - m.r);
+  const Y = y => h - m.b - (y - yr[0]) / (yr[1] - yr[0]) * (h - m.t - m.b);
+  c.strokeStyle = css("--line"); c.fillStyle = css("--muted"); c.lineWidth = 1;
+  c.textAlign = "right"; c.textBaseline = "middle";
+  for (const y of yt) { c.beginPath(); c.moveTo(m.l, Y(y)); c.lineTo(w - m.r, Y(y)); c.stroke(); c.fillText(fmt(y, yt.dec || 0), m.l - 4, Y(y)); }
+  c.textAlign = "center"; c.textBaseline = "top";
+  for (const x of xt) c.fillText(fmt(x), X(x), h - m.b + 4);
+  c.fillText(xl, (m.l + w - m.r) / 2, h - 16);
+  c.save(); c.translate(11, (m.t + h - m.b) / 2); c.rotate(-Math.PI / 2); c.fillText(yl, 0, -6); c.restore();
+  return { X, Y };
+}
+function nice(max) { const p = 10 ** Math.floor(Math.log10(max)); const s = [1, 2, 2.5, 5, 10].find(k => k * p * 5 >= max); return s * p; }
+function drawCycle() {
+  const cv = $("plotCycle"), { c, w, h } = setup(cv);
+  const T = S.T, cap = capacity(T), loads = PTS.map(loadAt);
+  const ymax = Math.max(...loads, cap.stance, 1200) * 1.08, ymin = S.act === "sts" ? 0 : -Math.max(cap.pull, pullPeak()) * 1.15 - 20;
+  const st = nice((ymax - ymin) / 1), ticks = []; for (let v = Math.ceil(ymin / (st / 5)) * (st / 5); v <= ymax; v += st / 5) ticks.push(Math.round(v));
+  const m = { l: 52, r: 10, t: 22, b: 36 };
+  const { X, Y } = axes(c, w, h, m, [0, 100], [ymin, ymax], "% of cycle", "axial load (N)", [0, 20, 40, 60, 80, 100], ticks);
+  // phase bands
+  const ph = S.act === "sts" ? PHASES_STS : PHASES_WALK;
+  ph.forEach(([a, b, n], i) => { if (i % 2) { c.fillStyle = css("--shade"); c.fillRect(X(a), m.t, X(b) - X(a), h - m.t - m.b); }
+    c.fillStyle = css("--muted"); c.textAlign = "center"; c.textBaseline = "bottom"; const lbl = n.split(" /")[0]; if (X(b) - X(a) > c.measureText(lbl).width + 4) c.fillText(lbl, (X(a) + X(b)) / 2, m.t - 4); });
+  // zero line
+  c.strokeStyle = css("--muted"); c.beginPath(); c.moveTo(m.l, Y(0)); c.lineTo(w - m.r, Y(0)); c.stroke();
+  // slip fill
+  c.fillStyle = "rgba(200,60,40,.25)";
+  for (let i = 0; i < PTS.length - 1; i++) { const p = PTS[i], L = loads[i], cp = L >= 0 ? cap.stance : -cap.pull;
+    if (Math.abs(L) > Math.abs(cp) && Math.abs(L) > 5) { c.fillRect(X(p), Math.min(Y(L), Y(cp)), X(PTS[i + 1]) - X(p) + .5, Math.abs(Y(L) - Y(cp))); } }
+  // target line
+  c.setLineDash([2, 4]); c.strokeStyle = css("--muted"); c.beginPath(); c.moveTo(m.l, Y(1200)); c.lineTo(w - m.r, Y(1200)); c.stroke();
+  c.fillStyle = css("--muted"); c.textAlign = "right"; c.textBaseline = "top"; c.fillText("1.2 kN design target", w - m.r - 4, Y(1200) + 2);
+  // capacity
+  c.setLineDash([7, 4]); c.lineWidth = 2; c.strokeStyle = css("--cap"); c.beginPath();
+  if (S.act === "sts") { c.moveTo(X(0), Y(cap.stance)); c.lineTo(X(100), Y(cap.stance)); }
+  else { c.moveTo(X(0), Y(cap.stance)); c.lineTo(X(60), Y(cap.stance)); c.moveTo(X(60), Y(-cap.pull)); c.lineTo(X(100), Y(-cap.pull)); }
+  c.stroke(); c.setLineDash([]);
+  // load
+  c.strokeStyle = css("--accent"); c.lineWidth = 2.2; c.beginPath(); PTS.forEach((p, i) => i ? c.lineTo(X(p), Y(loads[i])) : c.moveTo(X(p), Y(loads[i]))); c.stroke();
+  // scrubber
+  c.strokeStyle = css("--ink"); c.lineWidth = 1.5; c.beginPath(); c.moveTo(X(S.pct), m.t); c.lineTo(X(S.pct), h - m.b); c.stroke();
+  c.fillStyle = css("--ink"); c.beginPath(); c.arc(X(S.pct), Y(loadAt(S.pct)), 4, 0, 7); c.fill();
+  // legend
+  c.textAlign = "left"; c.textBaseline = "bottom"; c.font = `600 11px ${css("--sans")}`;
+  const ly = S.act === "sts" ? m.t + 34 : h - m.b - 22;
+  c.fillStyle = css("--accent"); c.fillText("solid: applied load", m.l + 8, ly);
+  c.fillStyle = css("--cap"); c.fillText(`dashed: capacity at ${fmt(T, 1)} lbf${cap.extrap ? " (extrapolated)" : ""}`, m.l + 8, ly + 14);
+  cv._map = x => Math.min(100, Math.max(0, (x - m.l) / (w - m.l - m.r) * 100));
+}
+function drawTension() {
+  const cv = $("plotTension"), { c, w, h } = setup(cv);
+  const loadNow = Math.abs(loadAt(S.pct)) >= 5, ts = [], ms = [];
+  for (let t = 10; t <= 100; t += 0.5) { ts.push(t); ms.push(loadNow ? marginAt(t, S.pct) : cycleMin(t).m); }
+  const ymax = Math.min(6, Math.max(2, ...ms.filter(isFinite)) * 1.05);
+  const yt = []; const step = ymax > 4 ? 1 : 0.5; for (let v = 0; v <= ymax + 1e-9; v += step) yt.push(v); yt.dec = step < 1 ? 1 : 0;
+  const m = { l: 38, r: 10, t: 14, b: 36 };
+  const { X, Y } = axes(c, w, h, m, [10, 100], [0, ymax], "lace tension (lbf)", "margin (×)", [10, 25, 40, 60, 80, 100], yt);
+  // not-simulated shading
+  c.fillStyle = css("--shade");
+  c.fillRect(X(10), m.t, X(25) - X(10), h - m.t - m.b); c.fillRect(X(60), m.t, X(100) - X(60), h - m.t - m.b);
+  c.fillStyle = css("--muted"); c.textAlign = "center"; c.textBaseline = "top";
+  c.fillText("extrapolated,", (X(60) + X(100)) / 2, m.t + 2); c.fillText("not simulated", (X(60) + X(100)) / 2, m.t + 14);
+  // FEA limit
+  const fl = feaLimit(); c.strokeStyle = css("--warn"); c.setLineDash([3, 3]); c.beginPath(); c.moveTo(X(fl), m.t); c.lineTo(X(fl), h - m.b); c.stroke();
+  c.fillStyle = css("--warn"); c.textAlign = "left"; c.fillText(`FEA tissue limit ${fl}`, X(fl) + 3, h - m.b - 14);
+  // 1.0 and 1.3
+  [[1, "--warn", "slip"], [CONST.target_margin, "--cap", "1.3 target"]].forEach(([v, col, lbl]) => {
+    c.strokeStyle = css(col); c.setLineDash([6, 3]); c.beginPath(); c.moveTo(m.l, Y(v)); c.lineTo(w - m.r, Y(v)); c.stroke();
+    c.fillStyle = css(col); c.textAlign = "right"; c.textBaseline = "bottom"; c.fillText(lbl, w - m.r - 2, Y(v) - 1); });
+  c.setLineDash([]);
+  // curve
+  c.strokeStyle = css("--accent"); c.lineWidth = 2.2; c.beginPath(); let on = false;
+  ts.forEach((t, i) => { const v = Math.min(ms[i], ymax); if (!isFinite(ms[i])) { on = false; return; } on ? c.lineTo(X(t), Y(v)) : c.moveTo(X(t), Y(v)); on = true; }); c.stroke();
+  // current T
+  c.strokeStyle = css("--ink"); c.lineWidth = 1.5; c.beginPath(); c.moveTo(X(S.T), m.t); c.lineTo(X(S.T), h - m.b); c.stroke();
+  // min safe tension
+  const tm = minTension(1);
+  if (tm != null && tm <= 100) { c.fillStyle = css("--cap"); c.beginPath(); c.arc(X(tm), Y(Math.min(ymax, 1)), 6, 0, 7); c.fill();
+    c.font = `700 12px ${css("--sans")}`; c.textAlign = "left"; c.textBaseline = "top"; c.fillText(`min ${fmt(tm, 1)} lbf`, X(tm) + 8, Y(Math.min(ymax, 1)) + 4); }
+  $("p2note").textContent = (loadNow ? `Margin at ${fmt(S.pct, 1)}% (${phaseName(S.pct)}).` : "No load at this point of the cycle; showing the worst point of the whole cycle.") +
+    " Green dot: minimum tension that holds the whole cycle (margin ≥ 1). Shaded: outside the simulated 25 to 60 lbf range.";
+}
+
+/* ---------- 3D ---------- */
+let R3 = null;
+const PETALS = [ // name, centre angle (deg, +y anterior), half span (deg)
+  ["anterior", 90, 43], ["medial", 187, 49], ["posterior", 280, 49], ["lateral", 10, 44]];
+const limbR = z => 41 + 19 * Math.min(1, z / 150) ** 0.7;   // mm, parametric taper
+function petalGeom(i, gap, relief) {
+  const [, c, hs] = PETALS[i], nt = 28, nz = 20, z0 = 58, z1 = 136, pos = [], idx = [];
+  for (let a = 0; a <= nt; a++) {
+    const u = a / nt, th = (c - hs + 2 * hs * u) * Math.PI / 180;
+    let top = z1;
+    if (relief && i === 3) { const w = Math.min(1, Math.max(0, (u - 0.45) / 0.25)); top = z1 - 16 * (1 - (0.5 - 0.5 * Math.cos(Math.PI * w))); }
+    for (let b = 0; b <= nz; b++) {
+      const z = z0 + (top - z0) * b / nz, flare = 0, r = limbR(z) + 1.5 + gap * (z - z0) / (z1 - z0) + flare;
+      pos.push(r * Math.cos(th), z, -r * Math.sin(th));
+    }
+  }
+  for (let a = 0; a < nt; a++) for (let b = 0; b < nz; b++) { const p = a * (nz + 1) + b; idx.push(p, p + nz + 1, p + 1, p + 1, p + nz + 1, p + nz + 2); }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+function slipGeom(i, frac, relief) {
+  const [, c, hs] = PETALS[i], nt = 28, pos = [], idx = [], z0 = 58, h = Math.max(0.5, 60 * frac);
+  for (let a = 0; a <= nt; a++) { const th = (c - hs + 2 * hs * a / nt) * Math.PI / 180;
+    for (const z of [z0, z0 + h]) { const r = limbR(z) + 1.2; pos.push(r * Math.cos(th), z, -r * Math.sin(th)); } }
+  for (let a = 0; a < nt; a++) { const p = a * 2; idx.push(p, p + 2, p + 1, p + 1, p + 2, p + 3); }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+  return g;
+}
+function hatchTex() {
+  const cv = document.createElement("canvas"); cv.width = cv.height = 32; const c = cv.getContext("2d");
+  c.strokeStyle = "rgba(200,40,30,.9)"; c.lineWidth = 4; for (let k = -32; k < 64; k += 10) { c.beginPath(); c.moveTo(k, 32); c.lineTo(k + 32, 0); c.stroke(); }
+  const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(8, 3); return t;
+}
+function init3D() {
+  const host = $("view");
+  if (typeof THREE === "undefined") { $("viewNote").textContent = "3D view unavailable: Three.js (cdnjs, r128) did not load. All numbers and plots still work."; return; }
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); host.appendChild(renderer.domElement);
+  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(32, 1, 1, 2000);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 0.9)); const dl = new THREE.DirectionalLight(0xffffff, 0.6); dl.position.set(200, 300, 250); scene.add(dl);
+  const root = new THREE.Group(); root.position.y = -95; scene.add(root);
+  // limb
+  const prof = []; for (let k = 0; k <= 24; k++) { const z = k * 7.5; prof.push(new THREE.Vector2(k === 0 ? 0 : limbR(z) * (k < 3 ? Math.sqrt(k / 3) : 1), z)); }
+  prof.push(new THREE.Vector2(limbR(190), 190));
+  const limb = new THREE.Mesh(new THREE.LatheGeometry(prof, 48), new THREE.MeshStandardMaterial({ color: 0xd9b8a3, roughness: .8, transparent: true, opacity: .55 }));
+  root.add(limb);
+  // cup + cushion
+  const cup = new THREE.Mesh(new THREE.CylinderGeometry(46, 40, 66, 48, 1, true), new THREE.MeshStandardMaterial({ color: 0x7c8794, side: THREE.DoubleSide, roughness: .6, transparent: true, opacity: .5 }));
+  cup.position.y = 25; root.add(cup);
+  const cush = new THREE.Mesh(new THREE.CylinderGeometry(40, 38, 6, 48), new THREE.MeshStandardMaterial({ color: 0x6aa3b8 })); cush.position.y = -3; root.add(cush);
+  const petals = [], slips = [], tex = hatchTex();
+  for (let i = 0; i < 4; i++) {
+    const m = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ color: 0x4fb39a, side: THREE.DoubleSide, roughness: .55, metalness: .05 }));
+    const edges = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x1b2833 }));
+    const s = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+    root.add(m); root.add(edges); root.add(s); petals.push({ m, edges }); slips.push(s);
+  }
+  R3 = { renderer, scene, cam, root, petals, slips, yaw: -0.6, pitch: 0.12, host, dirty: true };
+  const resize = () => { const r = host.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); cam.aspect = r.width / Math.max(1, r.height); cam.updateProjectionMatrix(); R3.dirty = true; };
+  new ResizeObserver(resize).observe(host); resize();
+  let drag = null;
+  host.addEventListener("pointerdown", e => { drag = [e.clientX, e.clientY, R3.yaw, R3.pitch]; host.setPointerCapture(e.pointerId); host.style.cursor = "grabbing"; });
+  host.addEventListener("pointermove", e => { if (!drag) return; R3.yaw = drag[2] + (e.clientX - drag[0]) * 0.01; R3.pitch = Math.max(-1.2, Math.min(1.2, drag[3] + (e.clientY - drag[1]) * 0.01)); R3.dirty = true; });
+  host.addEventListener("pointerup", () => { drag = null; host.style.cursor = "grab"; });
+  host.addEventListener("keydown", e => { const k = { ArrowLeft: [-.1, 0], ArrowRight: [.1, 0], ArrowUp: [0, -.1], ArrowDown: [0, .1] }[e.key];
+    if (k) { R3.yaw += k[0]; R3.pitch = Math.max(-1.2, Math.min(1.2, R3.pitch + k[1])); R3.dirty = true; e.preventDefault(); } });
+}
+function pcol(f) { // f = pressure / threshold, mapped to the legend ramp (0 to 1.5x threshold)
+  const stops = [[0, [43, 123, 185]], [.35, [79, 179, 154]], [.7, [227, 178, 60]], [1.05, [217, 87, 43]], [1.5, [160, 29, 29]]];
+  const x = Math.max(0, Math.min(1.5, f)); let i = 1; while (i < stops.length - 1 && x > stops[i][0]) i++;
+  const [a, ca] = stops[i - 1], [b, cb] = stops[i], t = (x - a) / (b - a);
+  return new THREE.Color(...ca.map((v, k) => (v + (cb[k] - v) * t) / 255));
+}
+function update3D() {
+  $("legMax").textContent = `${fmt(S.thresh * 1.5)} kPa (1.5× threshold)`;
+  if (!R3) return;
+  const L = loadAt(S.pct), Pk = peakPressure(S.T, L), cap = capacity(S.T);
+  const F = S.relief ? RESULTS.petal_force.relief : RESULTS.petal_force.no_relief, A = RESULTS.petal_area;
+  const q = F.map((f, i) => f / A[i]), qmax = Math.max(...q);
+  const gap = 9 * Math.max(0, 1 - S.T / 70);            // exaggerated closure
+  const ratio = Math.abs(L) < 5 ? 0 : Math.abs(L) / (L >= 0 ? cap.stance : cap.pull);
+  R3.petals.forEach((p, i) => {
+    p.m.geometry.dispose(); p.m.geometry = petalGeom(i, gap, S.relief);
+    p.edges.geometry.dispose(); p.edges.geometry = new THREE.EdgesGeometry(p.m.geometry, 30);
+    p.m.material.color = pcol(Pk * q[i] / qmax / S.thresh);
+    R3.slips[i].geometry.dispose(); R3.slips[i].geometry = slipGeom(i, Math.min(1, ratio), S.relief);
+    R3.slips[i].visible = ratio > 0.02; R3.slips[i].material.opacity = Math.min(0.9, 0.25 + 0.6 * ratio);
+  });
+  R3.dirty = true;
+}
+function render3D() {
+  if (R3 && R3.dirty) {
+    const d = 600; R3.cam.position.set(d * Math.cos(R3.pitch) * Math.sin(R3.yaw), d * Math.sin(R3.pitch), d * Math.cos(R3.pitch) * Math.cos(R3.yaw));
+    R3.cam.lookAt(0, 0, 0); R3.renderer.render(R3.scene, R3.cam); R3.dirty = false;
+  }
+}
+
+/* ---------- controls, loop ---------- */
+function phaseStrip() {
+  const ph = S.act === "sts" ? PHASES_STS : PHASES_WALK;
+  $("phaseStrip").innerHTML = ph.map(([a, b, n]) => `<span style="width:${b - a}%" title="${n}">${n.split(" /")[0]}</span>`).join("");
+}
+function bind(id, key, parse = parseFloat, ev = "input") {
+  $(id).addEventListener(ev, e => { const v = parse(e.target.value); if (typeof v === "number" && !isFinite(v)) return; S[key] = v; update(); });
+}
+bind("tension", "T"); bind("pct", "pct"); bind("mu", "mu"); bind("mass", "body"); bind("pmass", "prot"); bind("thresh", "thresh");
+$("relief").addEventListener("change", e => { S.relief = e.target.checked; update(); });
+$("activity").addEventListener("change", e => { S.act = e.target.value; phaseStrip(); update(); });
+$("speed").addEventListener("change", e => { S.speed = parseFloat(e.target.value); });
+$("play").addEventListener("click", () => { S.playing = !S.playing; $("play").textContent = S.playing ? "Pause" : "Play"; $("play").setAttribute("aria-pressed", S.playing); });
+$("plotCycle").addEventListener("click", e => { const r = e.target.getBoundingClientRect(); S.pct = Math.round(e.target._map(e.clientX - r.left) * 2) / 2; $("pct").value = S.pct; update(); });
+let last = performance.now(), acc = 0;
+function loop(now) {
+  const dt = (now - last) / 1000; last = now;
+  if (S.playing) { acc += dt * S.speed * 100 / 1.1; if (acc >= 0.5) { const step = Math.floor(acc / 0.5) * 0.5; acc -= step; S.pct = (S.pct + step) % 100; $("pct").value = S.pct; update(); } }
+  render3D(); requestAnimationFrame(loop);
+}
+function todo() {
+  const rows = [];
+  for (const k of ["t25", "t60"]) for (const [f, v] of Object.entries(RESULTS[k])) if (v == null) rows.push(`<li><span class="mono">RESULTS.${k}.${f}</span></li>`);
+  $("todoBody").innerHTML = `<p>These fields are null, so the page falls back to estimates where they are needed:</p><ul>${rows.join("")}</ul>
+    <p>Get them from <span class="mono">python scripts/stance_check.py runs/&lt;run&gt;</span> once a run reaches gross slip in the push: the axial load at slip is <span class="mono">axial_capacity_N</span>. With both capacities filled, the page switches from the friction estimate to FEA interpolation.</p>`;
+}
+window.addEventListener("resize", () => { drawCycle(); drawTension(); });
+if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => update());
+phaseStrip(); init3D(); todo(); update(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>

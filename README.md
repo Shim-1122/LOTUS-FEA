@@ -31,6 +31,9 @@ senior design project on a nighttime prosthesis. It covers:
   not included; place it at `data/socket/LOTUS_V5_Closed.step`.
 * `configs/synthetic_human.yaml` is a fully synthetic limb used for
   verification and for the sensitivity study.
+* `site/gait-tester.html` (LOTUS Gait Tester) is a single-file screening page:
+  grip vs gait load at a chosen lace tension, built on the FEA results in its
+  `RESULTS` object. It runs no FEA solve and is not clinically validated.
 * `site/` is a static website (results page, 3D viewer and report) that is
   ready for Vercel (`vercel.json`).
 
