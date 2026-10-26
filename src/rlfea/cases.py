@@ -338,7 +338,10 @@ def _assemble(cfg, model, mset, traction_model=None):
             w = 1.0 / (d[k] + 1e-9)
             return float((np.linalg.norm(P[k, :2], axis=1) * w).sum() / w.sum())
 
-        if cb.get("routing", "default") == "default":
+        if cb.get("routing", "default") == "cad" or (cb.get("routing", "default") == "default" and tm.meta.get("cad_route")):
+            route = tm.meta["cad_route"]
+            rep["routing_status"] = "lace through the hollow tubes of the CAD petals (see socket_report lace_route)"
+        elif cb.get("routing", "default") == "default":
             route = CB.default_route(petals, cb["route_height_fraction"], cb["guide_inset"], cb["dial_petal"], shell_r)
             rep["routing_status"] = "PROVISIONAL default single-row lace generated from the parametric petals"
         else:

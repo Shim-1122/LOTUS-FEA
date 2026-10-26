@@ -127,7 +127,7 @@ def resolve(raw: dict) -> tuple[dict, list[str]]:
         if np.asarray(S["cad"].get("cad_to_model"), float).shape != (4, 4):
             raise ConfigError("socket.cad.cad_to_model must be a 4x4 matrix")
         warn.append(f"Socket petals, pads, hinge axles and cup wall come from CAD {os.path.basename(S['cad']['path'])} "
-                    "(used TENTATIVELY); the distal cushion and lace routing are still parametric.")
+                    "(used TENTATIVELY); the lace runs through the CAD hollow tubes; the distal cushion is still parametric.")
     if S.get("enabled"):
         for k in ("z_base", "z_top", "posterior_clearance_drop", "tip_drop", "pad_thickness", "shell_thickness",
                   "initial_gap", "element_size", "cushion_thickness", "cup_thickness", "contact_zone_margin"):

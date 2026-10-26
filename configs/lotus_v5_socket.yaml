@@ -5,7 +5,7 @@
 #     inner skin surface and the outer muscle surface (no longer assumed);
 #   * four bones, including a candidate tibia (part_1) that was missing before.
 # Bone identities are heuristic (shape/size/position); confirm them.
-run_name: lotus_v5_T75
+run_name: lotus_v5_tubes_T75
 geometry:
   source: files
   patient_data: false   # published by the owner's decision (see data/limb/README.md)

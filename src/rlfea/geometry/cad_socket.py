@@ -131,6 +131,97 @@ def _rotate_about(P, origin, axis, ang):
     return origin + v * c + np.cross(k, v) * s_ + np.outer(v @ k, k) * (1 - c)
 
 
+def _tube_rows(petal_mesh, thc_deg, zmin, zmax, dz=0.25, min_frac=0.6):
+    """Hollow lace tubes running across a petal: horizontal rays from the axis
+    that cross the petal wall twice (>= 4 hits) over most of its width."""
+    th = np.deg2rad(thc_deg + np.linspace(-70, 70, 281))
+    rows, cur = [], []
+    for z in np.arange(zmin, zmax, dz):
+        H = _ray_hits(petal_mesh, z, th)
+        n4 = np.array([len(h) >= 4 for h in H]); n2 = np.array([len(h) >= 2 for h in H])
+        full = n2.sum() > 0 and n4.sum() > min_frac * n2.sum()
+        if full:
+            cur.append((z, H, n4, n2))
+        elif cur:
+            rows.append(cur); cur = []
+    if cur:
+        rows.append(cur)
+    out = []
+    for r in rows:
+        z, H, n4, n2 = r[len(r) // 2]                   # tube centre row
+        k4 = np.where(n4)[0]; k2 = np.where(n2)[0]
+        def opening(k):
+            h = H[k]
+            return float(0.5 * (h[1] + h[2]))
+        out.append({"z": float(z), "diameter_mm": float(r[-1][0] - r[0][0] + dz),
+                    "open_cw": (float(th[k4[0]]), opening(k4[0])), "open_ccw": (float(th[k4[-1]]), opening(k4[-1])),
+                    "outer_cw": (float(th[k2[0]]), float(H[k2[0]][-1])), "outer_ccw": (float(th[k2[-1]]), float(H[k2[-1]][-1]))})
+    return out
+
+
+def _cad_lace_route(parts, petals, names, closing, rep):
+    """Lace through the hollow tubes in the petals (CAD).  One strand from the
+    dial on the first petal; each tube row is a loop dial -> around -> dial.
+    A row missing on a petal is passed OUTSIDE that petal (frictionless
+    contact with its outer surface at the row height): an assumption."""
+    def P(th, r, z):
+        return np.array([r * np.cos(th), r * np.sin(th), z])
+    tubes = {}
+    for p, pn in zip(petals, names):
+        m = _tm(parts, [f"{pn}_anatomical_petal"])
+        tubes[p.name] = _tube_rows(m, p.theta_center_deg, m.bounds[0][2] + 1, m.bounds[1][2] - 1)
+    zs = sorted({round(t["z"]) for v in tubes.values() for t in v})
+    rows = []
+    for zr in zs:
+        if not rows or abs(zr - rows[-1]) > 3:
+            rows.append(zr)
+    dial = petals[0]
+    m0 = _tm(parts, [f"{names[0]}_anatomical_petal"])
+    z_dial = float(np.mean(rows))
+    h0 = _ray_hits(m0, z_dial, np.deg2rad([dial.theta_center_deg]))[0]
+    dial_xyz = P(np.deg2rad(dial.theta_center_deg), h0[-1] if h0 else 70.0, z_dial)
+    from ..loads.cable import RoutePoint
+    route, info = [], {"rows_z_mm": rows, "petals": {}}
+    for ri, zr in enumerate(rows):
+        route.append(RoutePoint(dial.name, dial_xyz + np.array([0, 0, 1e-3 * ri]), f"dial:row{ri + 1}_out"))
+        for k in range(len(petals) + 1):
+            p = petals[k % len(petals)]
+            t = [x for x in tubes[p.name] if abs(x["z"] - zr) <= 3]
+            first, last = k == 0, k == len(petals)
+            if t:
+                t = t[0]
+                cw, ccw = P(t["open_cw"][0], t["open_cw"][1], t["z"]), P(t["open_ccw"][0], t["open_ccw"][1], t["z"])
+                kind = "tube"
+            else:
+                tt = [x for x in tubes[p.name]][0] if tubes[p.name] else None
+                # no tube at this height: lace passes over the petal's outer surface
+                m = _tm(parts, [f"{names[petals.index(p)]}_anatomical_petal"])
+                th = np.deg2rad(p.theta_center_deg + np.linspace(-70, 70, 281))
+                H = _ray_hits(m, zr, th)
+                k2 = [i for i, h in enumerate(H) if len(h) >= 2]
+                cw, ccw = P(th[k2[0]], H[k2[0]][-1] + 1.0, zr), P(th[k2[-1]], H[k2[-1]][-1] + 1.0, zr)
+                kind = "outside (no tube)"
+            info["petals"].setdefault(p.name, {})[f"row{ri + 1}"] = kind
+            if first:
+                route.append(RoutePoint(p.name, ccw, f"{p.name}:row{ri + 1}_ccw"))
+            elif last:
+                route.append(RoutePoint(p.name, cw, f"{p.name}:row{ri + 1}_cw"))
+            else:
+                route.append(RoutePoint(p.name, cw, f"{p.name}:row{ri + 1}_cw"))
+                route.append(RoutePoint(p.name, ccw, f"{p.name}:row{ri + 1}_ccw"))
+        route.append(RoutePoint(dial.name, dial_xyz + np.array([0, 0, 1e-3 * ri + 5e-4]), f"dial:row{ri + 1}_in"))
+    # move the route points with each petal's closing rotation
+    for q in route:
+        o, a, ang = closing.get(q.body, (None, None, 0.0))
+        if ang:
+            q.xyz = _rotate_about(q.xyz[None], o, a, ang)[0]
+    info["n_points"] = len(route)
+    info["note"] = ("lace through the CAD hollow tubes; one strand from the dial on the "
+                    f"{names[0]} petal, one loop per tube row; frictionless tubes")
+    rep["lace_route"] = info
+    return route
+
+
 def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: dict) -> tuple[FEModel, dict]:
     """parts: CAD tessellation already in the model frame.  cfg as for the
     parametric socket, plus cad.petals = [names], cad.cap_height (mm)."""
@@ -223,6 +314,7 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
     sk = trimesh.Trimesh(skin.vertices, skin.faces, process=False)
     pq = trimesh.proximity.ProximityQuery(sk)
     snug = cad.get("snug_fit", {"percentile": 20.0, "interference": 0.1})
+    closing = {}
     if snug:
         X = model.nodes
         for p in petals:
@@ -239,6 +331,7 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
             allp = np.unique(np.concatenate([p.pad_nodes.ravel(), p.pad_outer_nodes.ravel(), p.shell_outer_nodes.ravel()]))
             model.nodes[allp] = _rotate_about(X[allp], p.hinge_origin, p.hinge_axis, ang)
             p.com = _rotate_about(p.com[None], p.hinge_origin, p.hinge_axis, ang)[0]
+            closing[p.name] = (p.hinge_origin, p.hinge_axis, ang)
             after = -pq.signed_distance(model.nodes[ids])
             rep["petals"][p.name]["closing_rotation_deg"] = float(np.degrees(abs(ang)))
             rep["petals"][p.name]["clearance_before_mm"] = {"min": float(clear.min()), "median": float(np.median(clear)), "max": float(clear.max())}
@@ -329,6 +422,8 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
     model.meta["petals"] = petals
     model.meta["socket_cfg"] = dict(cfg)
     model.meta["extra_contact_pairs"] = [("skin_cup_zone", "cup_wall_contact", "contact_cup_wall")]
+    if cad.get("lace", "tubes") == "tubes":
+        model.meta["cad_route"] = _cad_lace_route(parts, petals, names, closing, rep)
     # initial clearance of each socket surface to the skin (+ = gap)
     for nm in [f"{p.name}_pad_contact" for p in petals] + ["cup_wall_contact"]:
         q = Xs[np.unique(model.surfaces[nm].conn)]
