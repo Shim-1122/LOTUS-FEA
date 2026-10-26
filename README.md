@@ -32,8 +32,10 @@ senior design project on a nighttime prosthesis. It covers:
 * `configs/synthetic_human.yaml` is a fully synthetic limb used for
   verification and for the sensitivity study.
 * `site/gait-tester.html` (LOTUS Gait Tester) is a single-file screening page:
-  grip vs gait load at a chosen lace tension, built on the FEA results in its
-  `RESULTS` object. It runs no FEA solve and is not clinically validated.
+  grip vs gait load at a chosen lace tension, with the FEA deformation,
+  contact-pressure, shear and stick/slip fields of the stance runs replayed
+  on the limb (`scripts/export_gait_fields.py` inlines them). It runs no FEA
+  solve and is not clinically validated.
 * `site/` is a static website (results page, 3D viewer and report) that is
   ready for Vercel (`vercel.json`).
 
@@ -262,6 +264,251 @@ showed muscle elements compressed to 41% of their volume. With the
 incompressible setting that tissue has to move aside instead of
 compacting. The stance runs are being repeated with this setting; runs
 made before the change are kept with the suffix `_k100`.
+
+## Mathematical model
+
+Every calculation the LOTUS V5 runs and the Gait Tester rely on, with the
+worked numbers for the team patient. Units: mm, N, MPa (kPa where noted);
+1 lbf = 4.4482 N; g = 9.81 m/s².
+
+### 1. Patient mass and standing weight
+
+Mass lost with a transtibial amputation, from Winter's segment mass
+fractions (foot 1.45%, shank 4.65% of body mass) with a fraction $f$ of the
+shank removed:
+
+$$m_{lost} = M\,(0.0145 + 0.0465\,f)$$
+
+With $M$ = 81.6 kg (180 lb) and $f$ = 0.60 (residual tibia about 150 mm):
+$m_{lost}$ = 81.6 × 0.0424 = **3.46 kg**, so the body mass after amputation
+is **78.1 kg**.
+
+Standing weight with the prosthesis ($m_p$ = 1.5 kg, assumed):
+
+$$W = (M - m_{lost} + m_p)\,g = (78.14 + 1.5) \times 9.81 = \mathbf{781\ N}$$
+
+### 2. Loads on the socket
+
+**Walking stance (governing load).** The vertical ground reaction force
+peaks at about 1.2 W at loading response and push-off. The prosthesis's own
+weight does not pass through the socket-limb interface:
+
+$$F_{stance} = 1.2\,W - m_p g = 1.2 \times 781.3 - 14.7 = \mathbf{923\ N}\ (207\ \text{lbf})$$
+
+**Swing pull-out.** The prosthesis hangs from the limb and swings about the
+knee (peak knee angular velocity $\omega$ ≈ 6.5 rad/s, prosthesis centre of
+mass $r$ ≈ 0.30 m from the knee):
+
+$$F_{swing} = m_p\,(g + \omega^2 r) = 1.5\,(9.81 + 6.5^2 \times 0.30) = \mathbf{34\ N}$$
+
+**Sit-to-stand.** Seat-off peak about 0.6 W = **469 N**.
+
+**Design target.** The team asked for "a bit of headroom" over the largest
+load, taken as 1.3×:
+
+$$F_{target} = 1.3 \times 923 = \mathbf{1200\ N}$$
+
+The distal end may carry at most 15% of it, so the petals must carry at
+least 0.85 × 1200 = **1020 N**.
+
+**Gait curve (Gait Tester).** Load as a function of cycle position $\phi$:
+
+$$F(\phi) = \begin{cases} \max\left(0,\ a(\phi)\,W - m_p g\right) & 0 \le \phi \le 60\% \ (\text{stance}) \\ -s(\phi)\,F_{swing} & 60\% < \phi \le 100\% \ (\text{swing}) \end{cases}$$
+
+$a(\phi)$ is a double hump peaking at 1.2 (12% and 48%) with a midstance
+valley near 0.78; $s(\phi)$ rises to 1 at 88%. Both are editable arrays
+(`GAIT_CURVE`, `SWING_CURVE`) and are estimates.
+
+### 3. Lace tension needed (friction-only estimate)
+
+The FEA tube-lace run gives the total pad normal force as close to
+proportional to the line tension $T$: $N = k_N T$ with $k_N$ = 7.3, 7.8,
+8.0 and 8.1 at 25, 50, 75 and 100% of the tension. Using $k_N$ = 8.1, the
+petals can resist sliding up to
+
+$$F_{petals} = \mu\,k_N\,T$$
+
+Setting $F_{petals}$ = 1020 N:
+
+$$T = \frac{0.85\,F_{target}}{\mu\,k_N}$$
+
+| μ | T for 1× (784 N on the petals) | **T for 1.3× (1020 N)** | T for 2× (1569 N) |
+|---|---|---|---|
+| 0.5 | 194 N (44 lbf) | **252 N (57 lbf)** | 387 N (87 lbf) |
+| 0.8 | 121 N (27 lbf) | 157 N (35 lbf) | 242 N (54 lbf) |
+
+Swing needs $T = F_{swing} / (\mu k_N)$ = 5 to 8 N (1 to 2 lbf), so it never
+governs. The design tension, **60 lbf (267 N)**, is 30% of the 200 lbf
+RevoFit rating.
+
+The stance capacity in the friction model is $F_{petals}/(1 - s_d)$ with
+$s_d$ = 0.15, and the pull-out capacity is $F_{petals}$ alone (the distal
+end cannot resist pull-off). Margin:
+
+$$\text{margin}(\phi) = \frac{\text{capacity}}{|F(\phi)|},\qquad \text{slip if margin} < 1,\quad \text{target} \ge 1.3$$
+
+The minimum safe tension is the smallest $T$ (searched 1 to 300 lbf in
+0.5 lbf steps) with margin ≥ 1 at every point of the cycle: **44 lbf** at
+μ = 0.5 for the team patient, 57 lbf with the 1.3× headroom.
+
+### 4. Lace forces on the petals
+
+The lace is an ordered list of guide points $\mathbf{x}_k$ on the petals
+(the tube entries and exits). Each free span between consecutive points
+carries the line tension $T$ and pulls both of its ends toward each other.
+The force on the body that owns point $k$ is
+
+$$\mathbf{F}_k = T\left(\hat{\mathbf{e}}_{k,k-1} + \hat{\mathbf{e}}_{k,k+1}\right),\qquad \hat{\mathbf{e}}_{k,j} = \frac{\mathbf{x}_j - \mathbf{x}_k}{|\mathbf{x}_j - \mathbf{x}_k|}$$
+
+Each rigid petal receives the resultant $\sum \mathbf{F}_k$ and the moment
+$\sum (\mathbf{x}_k - \mathbf{x}_{hinge}) \times \mathbf{F}_k$. The lace is
+an internal load, so the sum over all bodies is checked to be zero. A small
+radial stabiliser spring (0.05 N/mm per petal) is reported separately.
+
+### 5. Contact
+
+FEBio `sliding-elastic`: penalty normal contact (scale 0.1 on the automatic
+penalty) and Coulomb friction,
+
+$$|\mathbf{t}_t| \le \mu\,p_n,\qquad \mu = 0.5$$
+
+A contact face sticks while $|\mathbf{t}_t| < \mu p_n$ and slips at equality.
+Slip area fraction = slipping contact area ÷ total contact area. Distal
+share = axial contact force on the cushion ÷ axial reaction on the cup.
+
+### 6. Materials
+
+**Small-strain moduli and Poisson ratio.** For each nearly incompressible
+material with shear modulus $\mu$ and bulk modulus $\kappa$:
+
+$$\nu = \frac{3\kappa - 2\mu}{2\,(3\kappa + \mu)}$$
+
+| κ / μ | ν | Used for |
+|---|---|---|
+| 100 | 0.4950 | skin, fat, silicone pad |
+| 1000 | 0.4995 | muscle (incompressible, see §8) |
+
+Under a mean pressure $p$, the volume change is $\Delta V/V \approx -p/\kappa$.
+For muscle at 100 kPa that is 19% with κ = 0.52 MPa, but 1.9% with
+κ = 5.2 MPa.
+
+**Skin (HGO, Ni Annaidh 2012).**
+
+$$W = \frac{c}{2}(\bar I_1 - 3) + \frac{k_1}{2k_2}\sum_{a=1,2}\left[e^{k_2 \langle E_a\rangle^2} - 1\right] + U(J),\quad E_a = \kappa_d(\bar I_1 - 3) + (1 - 3\kappa_d)(\bar I_{4a} - 1)$$
+
+with $c$ = 0.2014 MPa, $k_1$ = 24.53 MPa, $k_2$ = 0.1327, $\kappa_d$ = 0.1404,
+fibres at ±41° from the circumferential axis, and
+$U = \tfrac{k}{2}\left[\tfrac{J^2-1}{2} - \ln J\right]$, $k$ = 100 c = 20.14 MPa.
+
+**Fat and muscle (2-term symmetric Ogden, Sengeh 2016).**
+
+$$W = \sum_{i=1}^{2}\frac{c_i}{m_i^2}\left(\bar\lambda_1^{m_i} + \bar\lambda_2^{m_i} + \bar\lambda_3^{m_i} - 3\right) + \frac{k}{2}(\ln J)^2,\quad c_1 = c_2 = c,\ m_2 = -m_1$$
+
+Small-strain shear modulus = $c$. Fat: $c$ = 5.22 kPa, $m$ = 4.79,
+$k$ = 0.522 MPa. Muscle: $c$ = 5.20 kPa, $m$ = 4.78, $k$ = **5.20 MPa**
+(1000 c).
+
+**Silicone pad (neo-Hookean, Sanders 2004).** FEBio's uncoupled
+Mooney-Rivlin has $\mu = 2(c_1 + c_2)$. With $c_2$ = 0 and the median
+silicone-gel liner shear modulus μ = 23.3 kPa: $c_1$ = 23.3 / 2 = **11.65 kPa**,
+$k$ = 100 μ = 2.33 MPa.
+
+**Distal cushion (85A TPU, 2 walls, 8% gyroid).** Solid TPU small-strain
+Young's modulus from the NinjaFlex Mooney-Rivlin fit ($c_1$ = 0.385,
+$c_2$ = 1.47 MPa):
+
+$$E_s = 6(c_1 + c_2) = 6 \times 1.855 = 11.1\ \text{MPa}$$
+
+Gibson-Ashby scaling for a bending-dominated lattice at relative density
+$\rho^*$ = 0.08:
+
+$$E^* = C\,E_s\,(\rho^*)^n = 1 \times 11.1 \times 0.08^2 = \mathbf{71\ kPa}$$
+
+Range: $n$ = 1.5 gives 252 kPa; $C$ = 0.5 gives 36 kPa. Poisson ratio 0.3
+(compressible lattice).
+
+**Bone.** Rigid in the LOTUS V5 runs (E = 17 GPa, ν = 0.3 when deformable).
+
+### 7. Geometry
+
+**Layer thickness.** At each outer skin vertex, the skin thickness is the
+closest distance to the segmented inner skin surface, and skin plus fat is
+the closest distance to the outer muscle surface. Where the layers would
+self-intersect or reach bone, they are thinned locally to at most 90% of the
+available depth.
+
+**Petal closure.** Each petal is rotated about its hinge axis (the axle's
+principal axis) until the 20th percentile of its pad nodes sits 0.1 mm
+inside the skin. The rotations come out at 0.88 to 1.01°.
+
+**Fibular relief trim.** Along the petal width, $u \in [0, 1]$ from the
+posterior edge, with depth $d$ = 16 mm, flat fraction $f$ = 0.45 and ramp
+fraction $r$ = 0.25:
+
+$$w = \tfrac{1}{2} - \tfrac{1}{2}\cos\!\left(\pi\,\mathrm{clip}\!\left(\frac{u - f}{r}, 0, 1\right)\right),\qquad z_{top}(u) = z_{top,0} - d\,(1 - w)$$
+
+On a petal about 100 mm wide at the top, that is 45 mm flat at full depth,
+a 25 mm ramp, and 30 mm uncut.
+
+**Proposed lip flare (not yet modelled).** Over the top $h$ = 15 mm, the
+inner wall follows an arc of radius $R$ tangent to the wall. The outward
+offset at height $y$ above the start of the flare is
+
+$$\delta(y) = R - \sqrt{R^2 - y^2},\qquad \delta(15) = 4.0,\ 5.0,\ 6.8\ \text{mm for } R = 30,\ 25,\ 20\ \text{mm}$$
+
+### 8. Muscle incompressibility check
+
+`scripts/muscle_incompressibility_check.py`: a 20 mm cube of muscle on UT4
+tetrahedra, with its sides and base held, is indented 5 mm by a 10 × 10 mm
+indenter. The volume change is computed from the deformed tetrahedra,
+$V = \sum \tfrac{1}{6}\,|(\mathbf{b} - \mathbf{a}) \times (\mathbf{c} - \mathbf{a}) \cdot (\mathbf{d} - \mathbf{a})|$:
+−1.71% at κ = 100 μ, **−0.42% at 1000 μ** (used), −0.36% at 10 000 μ.
+
+### 9. Post-processing quantities
+
+* Volume ratio $J = \det \mathbf{F}$ (inversion when $J \le 0$; crushing
+  shows as small $J$).
+* Principal log strain $\ln \lambda_i$ and Green-Lagrange strain
+  $\tfrac{1}{2}(\lambda_i^2 - 1)$ from $\mathbf{C} = \mathbf{F}^T\mathbf{F}$.
+* Hydrostatic pressure $p = -\tfrac{1}{3}\mathrm{tr}\,\boldsymbol\sigma$.
+* Force imbalance: |sum of reactions and applied loads| ÷ applied load
+  (pass below 1e-3).
+* **Stance check** (`scripts/stance_check.py`): the axial load $F(t)$ is
+  read at each output time of the push. The state at the target load is
+  linearly interpolated between the bracketing outputs $A$ and $B$:
+  $w = (F_{target} - F_A)/(F_B - F_A)$, and each reported quantity is
+  $q = q_A + w\,(q_B - q_A)$.
+
+### 10. Gait Tester formulas
+
+**Pressure estimate beyond the FEA fields** (calibrated on the 25 lbf run at
+the end of tightening, $T$ = 111.2 N):
+
+$$p_{peak} = c_{pk}\,\frac{k_{N,FEA}\,T + c_t\,F_{petals,axial}}{A}$$
+
+* $k_{N,FEA}$ = 966.8 N / 111.2 N = **8.7**
+* $A$ = 26 233 mm² (contact area)
+* $c_{pk}$ = peak ÷ mean = 478 kPa ÷ (966.8 N / 26 233 mm²) = 478 / 36.9 = **13.0**
+* $c_t$ = rise in normal force ÷ rise in petal axial load during the push =
+  (1101 − 967) / (175 − 75) = **1.3**
+
+**FEA fields.** For tension $T$ between saved states $i$ and $i+1$, every
+nodal field (displacement, pressure, traction) is interpolated linearly in
+tension:
+
+$$q(T) = q_i + \frac{T - T_i}{T_{i+1} - T_i}\,(q_{i+1} - q_i)$$
+
+Above the last state it is scaled by $T/T_{last}$ and labelled as scaled.
+A stance load $L$ adds the push increments of the 25 lbf run,
+$q_{push,k} - q_{t=1}$, interpolated by $L$ against their axial-load
+increments (40, 72 and 116 N for the 1, 2 and 3 mm push states). Above
+116 N the push field is held at its last state and labelled. Nodal pressure
+is the maximum of the adjacent contact faces, so the field peak matches
+FEBio's face peak.
+
+**Pressure gradient** (indicator of shear loading of the tissue):
+
+$$|\nabla p|_{max} \approx \max_{\text{skin edges } (i,j)} \frac{|p_i - p_j|}{|\mathbf{x}_i - \mathbf{x}_j|}$$
 
 ## Materials (Scenario A: human tissue; Scenario B: prototype)
 
