@@ -372,7 +372,8 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
         lim_deg = float(lim.get("max_inward_deg", 2.0))
         L, wdt, tt = float(lim.get("lever_mm", 30.0)), float(lim.get("width_mm", 10.0)), float(lim.get("tab_thickness_mm", 6.0))
         bt, bk, bh = float(lim.get("bumper_mm", 2.0)), 3.0, float(lim.get("bumper_height_mm", 8.0))
-        rep["rotation_limit"] = {"max_inward_deg": lim_deg, "measured_from": lim.get("measured_from", "cad"), "lever_mm": L, "petals": {}}
+        rep["rotation_limit"] = {"max_inward_deg": lim_deg, "measured_from": lim.get("measured_from", "vertical"), "lever_mm": L, "petals": {},
+                                 "note": "petal lean = slope of the pad inner surface (radius vs height); the stop engages when the petal leans lim_deg inward of vertical"}
 
         def hex8(g, i, j, k):  # g: node-id grid [radial][axial][z]; hex between index i..i+1 etc, positive volume
             h = [g[i, j, k], g[i + 1, j, k], g[i + 1, j + 1, k], g[i, j + 1, k],
@@ -396,8 +397,19 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
             ang0 = closing.get(p.name, (None, None, 0.0))[2]
             probe = o + 50.0 * ez                                        # a point above the hinge
             sgn = 1.0 if np.linalg.norm(_rotate_about(probe[None], o, a, 1e-3)[0, :2]) < np.linalg.norm(probe[:2]) else -1.0
-            used = abs(np.degrees(ang0)) if lim.get("measured_from", "cad") == "cad" else 0.0
-            rem = max(lim_deg - used, 0.0)
+            # Lean of the petal from vertical in its current (snug) pose: slope of the pad inner surface,
+            # radius vs height, per column across the petal width; + = top leans outward.
+            Pin = model.nodes[p.pad_nodes]                                   # (nt, nz, 3)
+            rr = np.linalg.norm(Pin[..., :2], axis=-1); zz = Pin[..., 2]
+            slopes = [np.polyfit(zz[k], rr[k], 1)[0] for k in range(rr.shape[0])]
+            lean = float(np.degrees(np.arctan(np.median(slopes))))
+            if lim.get("measured_from", "vertical") == "vertical":
+                # the petal may tilt inward until it is lim_deg past vertical
+                rem = max(lean + lim_deg, 0.0)
+                used = abs(np.degrees(ang0))
+            else:                                                            # legacy: lim_deg of rotation from the CAD pose
+                used = abs(np.degrees(ang0))
+                rem = max(lim_deg - used, 0.0)
             tab = np.array([[[o + r * er + s_ * ea + z * ez for z in (-L, 0.0)] for s_ in (-wdt / 2, wdt / 2)] for r in (-tt / 2, tt / 2)])
             if ang0:
                 tab = _rotate_about(tab.reshape(-1, 3), o, a, ang0).reshape(tab.shape)
@@ -419,7 +431,8 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
             model.surfaces[f"stop{p.index + 1}_bumper"] = Surface(f"stop{p.index + 1}_bumper", "quad4", quad(sg, 0, -er))
             model.surfaces[f"stop{p.index + 1}_tab"] = Surface(f"stop{p.index + 1}_tab", "quad4", quad(tg, 1, er))
             stop_pairs.append((f"stop{p.index + 1}_bumper", f"stop{p.index + 1}_tab", f"stop_{p.name}"))
-            rep["rotation_limit"]["petals"][p.name] = {"closing_rotation_deg": used, "remaining_inward_deg": rem,
+            rep["rotation_limit"]["petals"][p.name] = {"closing_rotation_deg": used, "lean_from_vertical_deg": lean,
+                                                       "lean_at_stop_deg": lean - rem, "remaining_inward_deg": rem,
                                                        "initial_gap_mm": gap, "inward_sign": sgn}
     # ---- rigid cup wall from the CAD cavity ---------------------------------
     cup = _tm(parts, CUP_PARTS)

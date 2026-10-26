@@ -50,8 +50,9 @@ represents the real limb). No validation has been performed.
   approximation traced from a sketch (16 mm deep, posterior side of the
   lateral petal assumed), not the final CAD cut.
 * In the LOTUS V5 configs the lace is a perfectly tangential (hoop) force
-  and the rigid petals rotate on their hinges by at most 2° inward (a
-  modelled hinge stop). Both are idealisations chosen by the team: real
+  and the rigid petals rotate on their hinges but may lean at most 2°
+  inward of vertical (a modelled hinge stop; lean measured from the pad
+  inner surface). Both are idealisations chosen by the team: real
   petals flex, and the lace's axial and radial chord components are
   dropped.
 * Runs made before 2026-10-26 had an unconstrained cup wall (it drifted

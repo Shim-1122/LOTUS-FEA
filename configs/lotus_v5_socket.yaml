@@ -80,9 +80,9 @@ socket:
     cap_height: 8.0          # distal skin cap (mm above the apex) that rests on the cushion
     distal_cushion: true
     edge_margin_deg: 1.0
-    rotation_limit:          # rigid petals rotate about their hinges by at most 2 deg inward (team, 2026-10-26)
+    rotation_limit:          # rigid petals on their hinges may lean at most 2 deg inward of VERTICAL (team, 2026-10-26)
       max_inward_deg: 2.0
-      measured_from: cad     # from the CAD closed pose, so the snug-fit closing rotation counts toward the 2 deg
+      measured_from: vertical
       lever_mm: 30.0         # hinge-stop tab length below the hinge
     cad_to_model:            # socket frame -> model frame (180 deg about z so +y is anterior; z shift = apex)
     - [-1.0, 0.0, 0.0, 0.0]
