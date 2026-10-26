@@ -70,7 +70,7 @@ a{color:var(--accent)}
   <header>
     <span class="kicker">Senior design &middot; nighttime transtibial prosthesis &middot; FEBio 4.13.0.32ae206ff</span>
     <h1>LOTUS FEA</h1>
-    <p class="lead">This is a full finite element model of a below-knee residual limb, with skin, fat, muscle and four bones, squeezed by the four-petal LOTUS socket. The run below tightens the lace to the 75 N example tension, then tries to pull the socket 2&nbsp;mm off the limb. <span class="pill ok">solver converged (tightening + pull-out)</span></p>
+    <p class="lead">This is a full finite element model of a below-knee residual limb, with skin, fat, muscle and four bones, squeezed by the four-petal LOTUS socket (V5 CAD, used tentatively), with the lace running through the hollow tubes in the petals. The run below tightens the lace to the 75 N example tension, then tries to pull the socket 2&nbsp;mm off the limb. <span class="pill bad">tightening converged; run failed at t = 1.200</span></p>
     <div class="links">
       <a class="btn" href="viewer.html">Open the 3D viewer</a>
       <a class="btn alt" href="report.pdf">Full run report (PDF)</a>
@@ -80,7 +80,7 @@ a{color:var(--accent)}
 
   <section>
     <h2>At the 75 N example lace tension</h2>
-    <div class="stats"><div class="stat"><span class="v">6.5 mm</span><span class="k">Max tissue displacement</span><span class="n">anywhere in skin, fat or muscle</span></div><div class="stat"><span class="v">57 kPa</span><span class="k">Peak contact pressure</span><span class="n">mesh-dependent, underestimated</span></div><div class="stat"><span class="v">560 N</span><span class="k">Total contact force</span><span class="n">skin on pads and cushion</span></div><div class="stat"><span class="v">0.66</span><span class="k">Lowest volume ratio J</span><span class="n">1 = unchanged</span></div><div class="stat"><span class="v">0.96 mm</span><span class="k">Max penetration</span><span class="n">penalty contact regularisation</span></div></div>
+    <div class="stats"><div class="stat"><span class="v">12.3 mm</span><span class="k">Max tissue displacement</span><span class="n">anywhere in skin, fat or muscle</span></div><div class="stat"><span class="v">196 kPa</span><span class="k">Peak contact pressure</span><span class="n">mesh-dependent, underestimated</span></div><div class="stat"><span class="v">627 N</span><span class="k">Total contact force</span><span class="n">skin on pads and cushion</span></div><div class="stat"><span class="v">0.41</span><span class="k">Lowest volume ratio J</span><span class="n">1 = unchanged</span></div><div class="stat"><span class="v">2.38 mm</span><span class="k">Max penetration</span><span class="n">penalty contact regularisation</span></div></div>
     <p class="muted" style="margin-top:10px">These are numbers from one model. They are not clinical limits or injury thresholds. Peak contact pressure depends on the mesh, and the penalty contact method underestimates it; see the limitations below.</p>
   </section>
 
@@ -104,7 +104,7 @@ a{color:var(--accent)}
     <h2>Load history</h2>
     <div class="tbl"><table>
       <thead><tr><th>Step</th><th>Load</th><th>Max tissue displacement (mm)</th><th>Peak contact pressure (kPa)</th><th>Contact force (N)</th><th>Min J</th><th>Force imbalance</th></tr></thead>
-      <tbody><tr><td class='num'>t = 0.25</td><td>lace 18.8 N</td><td class='num'>1.84</td><td class='num'>24</td><td class='num'>157</td><td class='num'>0.905</td><td class='num'>7.8e-06</td></tr><tr><td class='num'>t = 0.50</td><td>lace 37.5 N</td><td class='num'>3.52</td><td class='num'>36</td><td class='num'>291</td><td class='num'>0.820</td><td class='num'>1.6e-10</td></tr><tr><td class='num'>t = 0.75</td><td>lace 56.2 N</td><td class='num'>5.08</td><td class='num'>49</td><td class='num'>427</td><td class='num'>0.737</td><td class='num'>1.9e-06</td></tr><tr><td class='num'>t = 1.00</td><td>lace 75.0 N</td><td class='num'>6.49</td><td class='num'>57</td><td class='num'>560</td><td class='num'>0.663</td><td class='num'>7.0e-07</td></tr><tr><td class='num'>t = 1.10</td><td>lace 75 N + pull-out 0.20 mm</td><td class='num'>6.43</td><td class='num'>57</td><td class='num'>559</td><td class='num'>0.659</td><td class='num'>4.3e-11</td></tr><tr><td class='num'>t = 1.20</td><td>lace 75 N + pull-out 0.40 mm</td><td class='num'>6.30</td><td class='num'>57</td><td class='num'>554</td><td class='num'>0.656</td><td class='num'>5.6e-10</td></tr><tr><td class='num'>t = 1.30</td><td>lace 75 N + pull-out 0.60 mm</td><td class='num'>6.19</td><td class='num'>57</td><td class='num'>549</td><td class='num'>0.653</td><td class='num'>2.6e-05</td></tr><tr><td class='num'>t = 1.40</td><td>lace 75 N + pull-out 0.80 mm</td><td class='num'>6.08</td><td class='num'>58</td><td class='num'>544</td><td class='num'>0.650</td><td class='num'>1.2e-06</td></tr><tr><td class='num'>t = 1.50</td><td>lace 75 N + pull-out 1.00 mm</td><td class='num'>5.99</td><td class='num'>58</td><td class='num'>538</td><td class='num'>0.648</td><td class='num'>1.6e-06</td></tr><tr><td class='num'>t = 1.60</td><td>lace 75 N + pull-out 1.20 mm</td><td class='num'>5.87</td><td class='num'>59</td><td class='num'>533</td><td class='num'>0.645</td><td class='num'>1.8e-09</td></tr><tr><td class='num'>t = 1.70</td><td>lace 75 N + pull-out 1.40 mm</td><td class='num'>5.77</td><td class='num'>59</td><td class='num'>527</td><td class='num'>0.643</td><td class='num'>9.6e-07</td></tr><tr><td class='num'>t = 1.80</td><td>lace 75 N + pull-out 1.60 mm</td><td class='num'>5.67</td><td class='num'>59</td><td class='num'>522</td><td class='num'>0.641</td><td class='num'>8.8e-10</td></tr><tr><td class='num'>t = 1.90</td><td>lace 75 N + pull-out 1.80 mm</td><td class='num'>5.56</td><td class='num'>60</td><td class='num'>516</td><td class='num'>0.639</td><td class='num'>1.1e-05</td></tr><tr><td class='num'>t = 2.00</td><td>lace 75 N + pull-out 2.00 mm</td><td class='num'>5.46</td><td class='num'>55</td><td class='num'>511</td><td class='num'>0.637</td><td class='num'>1.9e-09</td></tr></tbody>
+      <tbody><tr><td class='num'>t = 0.25</td><td>lace 18.8 N</td><td class='num'>4.18</td><td class='num'>55</td><td class='num'>141</td><td class='num'>0.706</td><td class='num'>1.7e-07</td></tr><tr><td class='num'>t = 0.50</td><td>lace 37.5 N</td><td class='num'>7.04</td><td class='num'>93</td><td class='num'>300</td><td class='num'>0.579</td><td class='num'>4.0e-07</td></tr><tr><td class='num'>t = 0.75</td><td>lace 56.2 N</td><td class='num'>9.74</td><td class='num'>176</td><td class='num'>463</td><td class='num'>0.475</td><td class='num'>7.8e-09</td></tr><tr><td class='num'>t = 1.00</td><td>lace 75.0 N</td><td class='num'>12.30</td><td class='num'>196</td><td class='num'>627</td><td class='num'>0.411</td><td class='num'>1.9e-06</td></tr><tr><td class='num'>t = 1.10</td><td>lace 75 N + pull-out 0.20 mm</td><td class='num'>12.73</td><td class='num'>300</td><td class='num'>631</td><td class='num'>0.410</td><td class='num'>1.3e-09</td></tr><tr><td class='num'>t = 1.20</td><td>lace 75 N + pull-out 0.40 mm</td><td class='num'>12.83</td><td class='num'>256</td><td class='num'>628</td><td class='num'>0.410</td><td class='num'>3.7e-08</td></tr></tbody>
     </table></div>
     <p class="muted" style="margin-top:8px">J is the local volume ratio (1 means no change). Force imbalance is the residual of the global force balance divided by the largest force.</p>
   </section>
@@ -115,7 +115,7 @@ a{color:var(--accent)}
       <ul>
         <li>47 of 47 verification checks pass. They compare the solver's material, contact, hinge, cable, energy, restart and locking behaviour against analytical or independently computed results.</li>
         <li>Skin and fat thickness are measured from the segmented surfaces at every skin vertex, with a median mesh deviation of 0.01&nbsp;mm (inner skin) and 0.08&nbsp;mm (inner fat).</li>
-        <li>Each socket petal's free body (lace, hinge, stabiliser and pad contact) balances to within 0.00% of the lace force.</li>
+        <li>Each socket petal's free body (lace, hinge, stabiliser and pad contact) balances to within 0.02% of the lace force.</li>
       </ul>
     </section>
     <section class="card">
@@ -125,8 +125,8 @@ a{color:var(--accent)}
         <li>The bone labels (tibia, femur, patella, fibula) are heuristic, and nobody has verified where the segmentation came from.</li>
         <li>The socket is a parametric stand-in, and 75&nbsp;N is an example tension, not a RevoFit rating.</li>
         <li>Silicone, cushion and TPU properties are assumptions. Tissue stiffness is the largest single uncertainty: in the synthetic sensitivity study, doubling or halving it changed peak displacement by &minus;31% or +47%.</li>
-        <li>The pull-out step converged. Even so, a converged pull-out is not proof that the socket grips a real limb.</li>
-        <li>At 75 N, 9 of 58612 elements (0.02%) have a volume ratio J below 0.8 (lowest 0.66). They sit in one small patch of muscle, 133 to 154 mm above the distal end. Near-incompressible muscle should barely change volume, so treat that spot as a mesh-quality or local-loading question, not a result.</li>
+        <li>The pull-out step did not complete: the run is failed at t = 1.200 (t = 1 is the end of tightening). Tightening to 75 N converged. The run was stopped once by a background time limit at t = 1.3 and resumed from its t = 1.2 restart dump; the pull-out then failed at t = 1.2 (0.4 mm of the 2 mm) because two elements inverted (negative Jacobians) in the muscle patch under the top edge of the lateral pad, where the volume ratio had already fallen to 0.41 at 75 N.</li>
+        <li>At 75 N, 135 of 57811 elements (0.23%) have a volume ratio J below 0.8 (lowest 0.41). They sit in one small patch of muscle, 60 to 165 mm above the distal end. Near-incompressible muscle should barely change volume, so treat that spot as a mesh-quality or local-loading question, not a result.</li>
       </ul>
     </section>
   </div>
@@ -141,7 +141,7 @@ rlfea verify
 rlfea run configs/knee_limb_segmented.yaml --runs runs</pre>
   </section>
 
-  <footer>Run <code>knee_limb_4petal_T75</code> &middot; commit <code>ddacd18283</code> &middot; generated 2026-10-26 &middot; MIT licence</footer>
+  <footer>Run <code>lotus_v5_tubes_T75</code> &middot; commit <code>74cacd72d1</code> &middot; generated 2026-10-26 &middot; MIT licence</footer>
 </div>
 </body>
 </html>
