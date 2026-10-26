@@ -156,3 +156,14 @@ incompressible muscle (k = 1000 c), 60 lbf design tension, coarse mesh.
 | posterior | 196 | 94 |
 | lateral | 351 | 303 |
 | cushion | 32 | 34 |
+
+## 25 lbf stance run (`configs/lotus_v5_stance_25lbf.yaml`, run `lotus_v5_stance_25lbf`)
+
+Incompressible muscle, no fibular relief, coarse mesh. Tightening to 25 lbf converged; the push
+FAILED after 3 mm of the 10 mm (t = 1.3). Full table: [STANCE_CHECK_25lbf.md](STANCE_CHECK_25lbf.md).
+
+* Axial load 216 N at 3 mm of push (18% of the 1.2 kN target), still rising with only 12% of the
+  contact area slipping, so this is a lower bound, not the grip capacity.
+* Distal share 19 to 25%, above the 15% limit at this lace tension.
+* Peak contact pressure 478 kPa at 25 lbf, 647 kPa at 3 mm of push (penalty contact, approximate).
+
