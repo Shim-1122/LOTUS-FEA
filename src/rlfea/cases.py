@@ -213,13 +213,21 @@ def _assemble(cfg, model, mset, traction_model=None):
     for b in model.blocks:
         if b.formulation == "rigid" or (b.region.startswith("bone:") and bone_mode == "rigid"):
             mname = f"rigid_{b.name}" if not b.name.startswith("petal") else f"rigid_{b.name.split('_')[0]}"
-            if b.name == "distal_cup":
+            if b.name in ("distal_cup", "cup_wall"):
+                # The CAD cup wall + hinge shield and the puck seat are one rigid part. Before 2026-10-26
+                # the wall became its own rigid body with no boundary condition and drifted away
+                # (tens of metres) in every LOTUS V5 run, so it never carried load.
                 mname = "rigid_cup"
-            com = _rigid_com(X, b.conn, b.etype)
-            if mname in spec.materials:
-                # several blocks may form one rigid body (not used currently)
-                pass
-            spec.materials[mname] = {"rigid": True, "com": com}
+            members = [bb for bb in model.blocks if (f"rigid_{bb.name}" if not bb.name.startswith("petal")
+                       else f"rigid_{bb.name.split('_')[0]}") == mname or (mname == "rigid_cup" and bb.name in ("distal_cup", "cup_wall"))]
+            members = [bb for bb in members if bb.formulation == "rigid" or (bb.region.startswith("bone:") and bone_mode == "rigid")]
+            if mname not in spec.materials:
+                if len(members) > 1:
+                    pts = np.vstack([X[np.unique(bb.conn)] for bb in members])
+                    com = pts.mean(0)
+                else:
+                    com = _rigid_com(X, b.conn, b.etype)
+                spec.materials[mname] = {"rigid": True, "com": com}
             spec.block_material[b.name] = mname
             continue
         if b.region.startswith("bone:"):

@@ -23,7 +23,7 @@ import pyvista as pv
 
 RUNS = {
     # key: (run dir, lace tension at t = 1 in lbf, output times to export)
-    "base": ("runs/lotus_v5_stance_25lbf", 25.0, [0.25, 0.5, 0.75, 1.0, 1.1, 1.2, 1.3]),
+    "base": ("runs/lotus_v5_stance_25lbf_freecup", 25.0, [0.25, 0.5, 0.75, 1.0, 1.1, 1.2, 1.3]),
     "relief": ("runs/lotus_v5_stance_60lbf_relief", 60.0, [0.1, 0.2, 0.3, 0.4, 0.5]),
 }
 FIGS = [("sections", "Mid-limb sections at 25 lbf, end of tightening: displacement, max principal log strain, hydrostatic pressure, max principal stress"),
@@ -71,6 +71,13 @@ def main():
             vol = pv.read(f"{run}/results/volume_t{t:.4f}.vtu")
             con = pv.read(f"{run}/results/contact_t{t:.4f}.vtp")
             U = vol.point_data["displacement"][used]
+            # Runs made before 2026-10-26 left the cup wall as a free rigid body that drifted away.
+            # Draw it attached to the distal cup (same rigid motion) so the picture is not misleading.
+            cupw = np.isin(used, np.unique(parts["cup"]))
+            if np.abs(U[cupw]).max() > 50:
+                sub = vol.extract_cells(vol.cell_data["block_id"] == 18)
+                U[cupw] = sub.point_data["displacement"].mean(0)
+                sset.setdefault("notes", []).append(f"t={t}: cup wall drawn attached to the distal cup (it was unconstrained in this run)")
             # contact fields: face -> node
             F = con.faces.reshape(-1, 4)[:, 1:] if con.faces.size else con.cells.reshape(-1, 4)[:, 1:]
             p = np.zeros(v0.n_points); tt = np.zeros(v0.n_points); sl = np.zeros(v0.n_points); c = np.zeros(v0.n_points)

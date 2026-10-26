@@ -498,7 +498,7 @@ tension:
 
 $$q(T) = q_i + \frac{T - T_i}{T_{i+1} - T_i}\,(q_{i+1} - q_i)$$
 
-Above the last state it is scaled by $T/T_{last}$ and labelled as scaled.
+Above the last solved state the fields are **not extrapolated**: the page shows that state and labels it NOT SOLVED.
 A stance load $L$ adds the push increments of the 25 lbf run,
 $q_{push,k} - q_{t=1}$, interpolated by $L$ against their axial-load
 increments (40, 72 and 116 N for the 1, 2 and 3 mm push states). Above
