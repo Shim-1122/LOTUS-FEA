@@ -12,7 +12,7 @@
 #     inner skin surface and the outer muscle surface (no longer assumed);
 #   * four bones, including a candidate tibia (part_1) that was missing before.
 # Bone identities are heuristic (shape/size/position); confirm them.
-run_name: lotus_v5_stance_60lbf
+run_name: lotus_v5_stance_60lbf_fine
 geometry:
   source: files
   patient_data: false   # published by the owner's decision (see data/limb/README.md)
@@ -53,9 +53,9 @@ geometry:
     - [0.009267, -0.999957, 0.0, 80.491421]
     - [0.0, 0.0, 1.0, 191.691757]
     - [0.0, 0.0, 0.0, 1.0]
-  remesh:
-    skin_size: {value: 9.0, unit: mm}
-    bone_size: {value: 6.0, unit: mm}
+  remesh:                  # refined: the coarse mesh inverted thin muscle between the fibula and the lateral pad edge
+    skin_size: {value: 7.0, unit: mm}
+    bone_size: {value: 3.5, unit: mm}
 layers:
   skin_thickness: {value: 1.5, unit: mm}   # unused when segmented_layers is given
   fat_thickness: {value: 3.0, unit: mm}    # unused when segmented_layers is given
