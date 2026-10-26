@@ -41,3 +41,20 @@ def test_petal_moment_balance_sign():
     load = {"point_forces": [{"xyz": [62.0, 0, 100.0], "force_N": [-10.0, 0, 0]}]}   # cable pulls petal top inward
     N = CB.petal_pad_force_moment_balance(P, load, np.array([60.0, 0, 50.0]), np.array([1.0, 0, 0]))
     assert N == pytest.approx(20.0)   # lever 100 vs 50 -> compressive pad force 20 N
+
+
+def test_tangential_force_model_keeps_only_hoop_component():
+    import numpy as np
+    from rlfea.loads.cable import RoutePoint, body_loads
+    # two guide points on a circle of radius 50 at +/-30 deg, on different bodies, plus a return point
+    pts = [RoutePoint("a", np.array([50 * np.cos(np.radians(-30)), 50 * np.sin(np.radians(-30)), 0.0]), "a1"),
+           RoutePoint("b", np.array([50 * np.cos(np.radians(30)), 50 * np.sin(np.radians(30)), 10.0]), "b1")]
+    com = {"a": np.zeros(3), "b": np.zeros(3)}
+    out = body_loads(pts, 10.0, com, force_model="tangential")
+    for body, p in (("a", pts[0]), ("b", pts[1])):
+        f = np.array(out["bodies"][body]["point_forces"][0]["force_N"])
+        r = p.xyz.copy(); r[2] = 0
+        assert abs(f[2]) < 1e-12                     # no axial component
+        assert abs(np.dot(f, r / np.linalg.norm(r))) < 1e-9   # no radial component
+    span = body_loads(pts, 10.0, com, force_model="span")
+    assert abs(span["bodies"]["a"]["F"][2]) > 1.0       # the chord has an axial part that the tangential model drops

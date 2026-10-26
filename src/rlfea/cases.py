@@ -286,18 +286,31 @@ def _assemble(cfg, model, mset, traction_model=None):
         for p in petals:
             rb = f"rigid_{p.name}"
             spec.materials[rb]["com"] = _rigid_com(X, model.block(f"{p.name}_shell").conn, "hex8")
-            radial = np.cross(p.hinge_axis, [0, 0, 1.0])
-            spec.connectors.append({"type": "rigid revolute joint", "name": f"hinge_{p.name}", "params": {
-                "body_a": "rigid_cup", "body_b": rb, "laugon": "PENALTY", "tolerance": 0.0,
-                "force_penalty": 1e4, "moment_penalty": 1e7, "auto_penalty": 0,
-                "joint_origin": p.hinge_origin, "rotation_axis": p.hinge_axis, "transverse_axis": radial}})
+            if S.get("petal_motion", "hinged") == "radial":
+                # Petal held at its fixed orientation; it may only translate along its own radial
+                # direction relative to the cup (prismatic joint, no rotation).
+                th = np.deg2rad(p.theta_center_deg)
+                axis = np.array([np.cos(th), np.sin(th), 0.0])
+                spec.connectors.append({"type": "rigid prismatic joint", "name": f"slide_{p.name}", "params": {
+                    "body_a": "rigid_cup", "body_b": rb, "tolerance": 0.0,
+                    "force_penalty": 1e4, "moment_penalty": 1e7, "auto_penalty": 0,
+                    "joint_origin": spec.materials[rb]["com"], "translation_axis": axis, "transverse_axis": [0.0, 0.0, 1.0]}})
+            else:
+                radial = np.cross(p.hinge_axis, [0, 0, 1.0])
+                spec.connectors.append({"type": "rigid revolute joint", "name": f"hinge_{p.name}", "params": {
+                    "body_a": "rigid_cup", "body_b": rb, "laugon": "PENALTY", "tolerance": 0.0,
+                    "force_penalty": 1e4, "moment_penalty": 1e7, "auto_penalty": 0,
+                    "joint_origin": p.hinge_origin, "rotation_axis": p.hinge_axis, "transverse_axis": radial}})
             if k_stab > 0:
                 top = X[p.shell_outer_nodes[:, -1]].mean(0) * 0.5 + X[p.pad_outer_nodes[:, -1]].mean(0) * 0.5
                 anchor = np.array([0.0, 0.0, top[2]])
                 spec.connectors.append({"type": "rigid spring", "name": f"stabilizer_{p.name}", "params": {
                     "body_a": rb, "body_b": "rigid_cup", "k": k_stab, "insertion_a": top, "insertion_b": anchor,
                     "free_length": float(np.linalg.norm(top - anchor))}})
-        rep["assumptions"].append(f"Each petal hinge is a frictionless revolute joint (penalty 1e4 N/mm, 1e7 N mm/rad). "
+        if S.get("petal_motion", "hinged") == "radial":
+            rep["assumptions"].append("Petals do not rotate during loading: each is a rigid body on a frictionless prismatic "
+                                      "joint to the cup along its own radial direction (penalty 1e4 N/mm, 1e7 N mm/rad).")
+        rep["assumptions"].append((f"Each petal hinge is a frictionless revolute joint (penalty 1e4 N/mm, 1e7 N mm/rad). " if S.get("petal_motion", "hinged") != "radial" else "") +
                                   f"A radial stabiliser spring k = {k_stab} N/mm per petal is NUMERICAL STABILISATION; "
                                   "its force and energy are reported.")
         ctype = "tied-elastic" if C.get("bonded") else C["type"]
@@ -357,7 +370,7 @@ def _assemble(cfg, model, mset, traction_model=None):
             route = CB.route_from_config(cb["routing"])
             rep["routing_status"] = "explicit routing from configuration"
         coms = {f"{p.name}": (tm and _rigid_com(Xs, tm.block(f"{p.name}_shell").conn, "hex8")) for p in petals}
-        bl = CB.body_loads(route, T_apply, coms, cb["guide_friction"])
+        bl = CB.body_loads(route, T_apply, coms, cb["guide_friction"], cb.get("force_model", "span"))
         rep["cable"] = {"route": [{"body": r.body, "xyz": r.xyz.tolist(), "label": r.label} for r in route],
                         "body_loads": {k: {"F_N": v["F"].tolist(), "M_com_Nmm": v["M_com"].tolist(),
                                            "point_forces": v["point_forces"]} for k, v in bl["bodies"].items()},
@@ -375,6 +388,9 @@ def _assemble(cfg, model, mset, traction_model=None):
                     if abs(v["M_com"][i]) > 0:
                         spec.rigid_loads.append({"type": "rigid_moment", "rb": f"rigid_{pname}", "dof": dof,
                                                  "value": float(v["M_com"][i]), "lc": 1, "name": f"cable_{pname}_{dof}"})
+            if cb.get("force_model", "span") == "tangential":
+                rep["assumptions"].append("Lace force is perfectly TANGENTIAL: at each guide point only the horizontal "
+                                          "circumferential (hoop) component of the span tension is applied.")
             rep["assumptions"].append("Cable span forces are applied to the rigid petals as fixed-direction resultant force "
                                       "and moment about each petal's centre of mass (directions do not follow petal rotation).")
         else:

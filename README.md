@@ -161,19 +161,31 @@ The derivation is in [docs/GRIP_ESTIMATE.md](docs/GRIP_ESTIMATE.md).
   crosses into the **upper** tubes (anterior, medial, posterior). The
   lateral petal has no upper tube by design, so the strand passes over its
   outer surface back to the dial. Tubes are modelled as frictionless guide
-  points, and span forces act as fixed-direction resultants on the rigid
-  petals.
+  points.
+* **Force model: perfectly tangential** (`cable.force_model: tangential`,
+  team 2026-10-26). At each guide point only the horizontal circumferential
+  (hoop) component of the lace tension is applied; the axial and radial
+  chord components are dropped. Each petal therefore receives the hoop
+  resultant, which points inward. At 25 lbf: anterior 159 N, medial 298 N,
+  posterior 281 N, lateral 193 N (about 930 N in total).
 
 ### Socket geometry (LOTUS V5 CAD, used tentatively)
 
 * Source: `LOTUS_V5_Closed (4).step`, all parts in mm. The STEP file is not
   published (`data/socket/` is git-ignored).
 * **Four petals:** anterior (carries the dial), medial, posterior, lateral.
-  Petals and hinge axles are rigid; each petal rotates about its own hinge
-  axis, taken from the axle's principal axis.
+  Petals are rigid. **They do not rotate during loading** (team, 2026-10-26):
+  each is held at its fixed orientation by a frictionless prismatic joint to
+  the cup and can only slide along its own radial direction
+  (`socket.petal_motion: radial`). The older hinged option (rotation about
+  each axle's principal axis) is still available as `petal_motion: hinged`.
+* **Cup:** the CAD cup wall, hinge shield and puck seat form one fixed rigid
+  body. (Runs before 2026-10-26 left the cup wall unconstrained; it drifted
+  away and carried no load. Those runs are kept with the suffix `_freecup`.)
 * **Pose:** fitted automatically (`scripts/fit_socket_pose.py`). Each petal
-  is then closed about its hinge until the 20th percentile of its pad nodes
-  is 0.1 mm into the skin, so contact starts snug.
+  is then set, once, at a closed position (rotated about its hinge until the
+  20th percentile of its pad nodes is 0.1 mm into the skin) so contact
+  starts snug. That orientation is then held fixed for the whole analysis.
 * **Silicone pads** (about 2.7 to 3 mm thick) are backed by **rigid nylon**:
   each pad's back face shares nodes with its rigid petal shell, so the pad
   can only compress through its thickness (and bulge at its free edges); it
@@ -356,13 +368,28 @@ The minimum safe tension is the smallest $T$ (searched 1 to 300 lbf in
 The lace is an ordered list of guide points $\mathbf{x}_k$ on the petals
 (the tube entries and exits). Each free span between consecutive points
 carries the line tension $T$ and pulls both of its ends toward each other.
-The force on the body that owns point $k$ is
+In the general ("span") model the force on the body that owns point $k$ is
 
 $$\mathbf{F}_k = T\left(\hat{\mathbf{e}}_{k,k-1} + \hat{\mathbf{e}}_{k,k+1}\right),\qquad \hat{\mathbf{e}}_{k,j} = \frac{\mathbf{x}_j - \mathbf{x}_k}{|\mathbf{x}_j - \mathbf{x}_k|}$$
 
-Each rigid petal receives the resultant $\sum \mathbf{F}_k$ and the moment
-$\sum (\mathbf{x}_k - \mathbf{x}_{hinge}) \times \mathbf{F}_k$. The lace is
-an internal load, so the sum over all bodies is checked to be zero. A small
+**Tangential model (used for LOTUS V5).** Only the hoop component is kept,
+with $\hat{\mathbf{t}}_k = (-y_k, x_k, 0)/\sqrt{x_k^2 + y_k^2}$:
+
+$$\mathbf{F}_k^{t} = (\mathbf{F}_k \cdot \hat{\mathbf{t}}_k)\,\hat{\mathbf{t}}_k$$
+
+For a petal whose two lace points sit at angles $\pm\varphi$ from its
+centre line, the two tangential pulls add to the classic band (capstan-free
+hoop) result $F_r = 2T\sin\varphi$, directed inward.
+
+Each rigid petal receives the resultant $\sum \mathbf{F}_k$ and moment. In
+the span model the lace is an internal load, so the sum over all bodies is
+checked to be zero. In the tangential model the dropped components make the
+sum non-zero; that difference is carried by the joints.
+
+**Petal kinematics.** Each petal is joined to the fixed cup by a prismatic
+joint with translation axis $(\cos\theta_c, \sin\theta_c, 0)$ through its
+centre of mass (penalty 1e4 N/mm, 1e7 N mm/rad), so it keeps its orientation
+and only slides radially. A small
 radial stabiliser spring (0.05 N/mm per petal) is reported separately.
 
 ### 5. Contact

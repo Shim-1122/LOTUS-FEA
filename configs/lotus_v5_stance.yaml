@@ -93,6 +93,7 @@ socket:
     - [0.0, 0.0, 1.0, 191.700428]
     - [0.0, 0.0, 0.0, 1.0]
   n_petals: 4
+  petal_motion: radial     # petals keep their orientation; they only slide radially (prismatic joint), team 2026-10-26
   pad_thickness:
     value: 3.0
     unit: mm
@@ -137,6 +138,7 @@ cable:
   - 0.75
   - 1.0
   guide_friction: 0.0
+  force_model: tangential  # lace acts as a perfectly tangential (hoop) force at each guide point, team 2026-10-26
   routing: default
   route_height_fraction: 0.75
 load_cases:

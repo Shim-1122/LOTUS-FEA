@@ -49,8 +49,13 @@ represents the real limb). No validation has been performed.
 * The fibular relief in `configs/lotus_v5_stance_relief.yaml` is an
   approximation traced from a sketch (16 mm deep, posterior side of the
   lateral petal assumed), not the final CAD cut.
-* Cable span forces act on rigid petals as fixed-direction resultants. They
-  do not follow petal rotation.
+* In the LOTUS V5 configs the lace is a perfectly tangential (hoop) force
+  and the petals cannot rotate (they only slide radially on prismatic
+  joints). Both are idealisations chosen by the team: real petals flex and
+  pivot slightly, and the lace's axial and radial chord components are
+  dropped.
+* Runs made before 2026-10-26 had an unconstrained cup wall (it drifted
+  away and carried no load) and hinged, rotating petals.
 * Each petal has a small radial stabiliser spring (default 0.05 N/mm). It is
   numerical stabilisation. Its force and share of the cable moment are
   reported.

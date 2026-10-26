@@ -62,9 +62,29 @@ def lace_tensions(points: list[RoutePoint], T0: float, mu_guide: float = 0.0) ->
     return np.maximum(Tf, Tb)
 
 
-def body_loads(points: list[RoutePoint], T0: float, com: dict[str, np.ndarray], mu_guide: float = 0.0) -> dict:
+def tangential(xyz: np.ndarray, f: np.ndarray) -> np.ndarray:
+    """Component of f along the horizontal circumferential direction at xyz (socket axis = z)."""
+    t = np.array([-xyz[1], xyz[0], 0.0])
+    nt = np.linalg.norm(t)
+    if nt == 0:
+        raise ValueError("guide point on the socket axis has no tangential direction")
+    t /= nt
+    return float(np.dot(f, t)) * t
+
+
+def body_loads(points: list[RoutePoint], T0: float, com: dict[str, np.ndarray], mu_guide: float = 0.0,
+               force_model: str = "span") -> dict:
     """Return per-body point forces, resultant force and moment about the
-    body's reference point (centre of mass used by the solver)."""
+    body's reference point (centre of mass used by the solver).
+
+    force_model "span": each span pulls its two ends along the span (chord).
+    force_model "tangential": only the horizontal circumferential (hoop) component of each
+    span force is kept at each guide point, i.e. the lace acts as a perfectly tangential
+    band. A petal then receives the hoop resultant (inward for a lace wrapping the socket).
+    The axial and radial chord components are dropped, so the body loads no longer sum to
+    zero; the difference is reacted by the petal joints."""
+    if force_model not in ("span", "tangential"):
+        raise ValueError(f"unknown lace force_model {force_model!r}")
     T = lace_tensions(points, T0, mu_guide)
     out: dict = {b: {"point_forces": [], "F": np.zeros(3), "M_com": np.zeros(3)} for b in {p.body for p in points}}
     spans = []
@@ -75,6 +95,8 @@ def body_loads(points: list[RoutePoint], T0: float, com: dict[str, np.ndarray], 
         u = _unit(b.xyz - a.xyz)
         fa = T[k] * u          # on body a at point a, toward b
         fb = -T[k] * u         # on body b at point b, toward a
+        if force_model == "tangential":
+            fa, fb = tangential(a.xyz, fa), tangential(b.xyz, fb)
         spans.append({"from": a.label, "to": b.label, "tension_N": float(T[k]),
                       "length_mm": float(np.linalg.norm(b.xyz - a.xyz))})
         for p, f in ((a, fa), (b, fb)):
@@ -89,7 +111,7 @@ def body_loads(points: list[RoutePoint], T0: float, com: dict[str, np.ndarray], 
             total_M0 += np.cross(np.array(pf["xyz"]), np.array(pf["force_N"]))
     return {"bodies": out, "spans": spans, "segment_tensions_N": T.tolist(),
             "sum_force_N": total_F.tolist(), "sum_moment_about_origin_Nmm": total_M0.tolist(),
-            "T0_N": T0, "mu_guide": mu_guide}
+            "T0_N": T0, "mu_guide": mu_guide, "force_model": force_model}
 
 
 def default_route(petals, z_frac: float = 0.75, inset_deg: float = 4.0, dial_petal: int = 0,
