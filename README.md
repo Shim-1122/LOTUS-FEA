@@ -174,18 +174,21 @@ The derivation is in [docs/GRIP_ESTIMATE.md](docs/GRIP_ESTIMATE.md).
 * Source: `LOTUS_V5_Closed (4).step`, all parts in mm. The STEP file is not
   published (`data/socket/` is git-ignored).
 * **Four petals:** anterior (carries the dial), medial, posterior, lateral.
-  Petals are rigid. **They do not rotate during loading** (team, 2026-10-26):
-  each is held at its fixed orientation by a frictionless prismatic joint to
-  the cup and can only slide along its own radial direction
-  (`socket.petal_motion: radial`). The older hinged option (rotation about
-  each axle's principal axis) is still available as `petal_motion: hinged`.
+  Petals are **rigid solids on frictionless hinges** (axis from each axle's
+  principal axis) that **rotate at most 2° inward** (team, 2026-10-26),
+  measured from the CAD closed pose (`socket.cad.rotation_limit`). The limit
+  is a hinge stop: a rigid 30 mm tab below each hinge (part of the petal)
+  meets a stiff bumper fixed to the cup when the petal has turned 2° inward.
+  Without the stop, the earlier runs turned the medial petal 11 to 14° and
+  the lateral petal 2.5 to 5° inward at only 25 to 30 lbf, driving their top
+  edges into the limb.
 * **Cup:** the CAD cup wall, hinge shield and puck seat form one fixed rigid
   body. (Runs before 2026-10-26 left the cup wall unconstrained; it drifted
   away and carried no load. Those runs are kept with the suffix `_freecup`.)
 * **Pose:** fitted automatically (`scripts/fit_socket_pose.py`). Each petal
-  is then set, once, at a closed position (rotated about its hinge until the
-  20th percentile of its pad nodes is 0.1 mm into the skin) so contact
-  starts snug. That orientation is then held fixed for the whole analysis.
+  is then closed about its hinge until the 20th percentile of its pad nodes
+  is 0.1 mm into the skin, so contact starts snug. That closing (0.88 to
+  0.99°) counts toward the 2° limit, leaving 1.0 to 1.1° for the lace.
 * **Silicone pads** (about 2.7 to 3 mm thick) are backed by **rigid nylon**:
   each pad's back face shares nodes with its rigid petal shell, so the pad
   can only compress through its thickness (and bulge at its free edges); it
@@ -210,14 +213,20 @@ The derivation is in [docs/GRIP_ESTIMATE.md](docs/GRIP_ESTIMATE.md).
   segmented inner surfaces; muscle fills the space to the bones.
 * Bones are rigid and fixed (patella free); the proximal cut is an axial
   roller.
-* Skin: HGO, Ni Annaidh 2012. Fat: Ogden, Sengeh 2016. Bulk modulus of
-  skin and fat: 100 × shear modulus (near-incompressible, approximation).
+* Skin: HGO, Ni Annaidh 2012. Bulk modulus of skin and fat: 100 × shear
+  modulus (near-incompressible, approximation).
+* **Tissue set v2 (2026-10-26): Sengeh 2016 is no longer used** (team
+  request). Fat: Ogden, shear modulus **6.55 kPa**, exponent 5 (Mukhina et
+  al. 2020). Muscle: Ogden, shear modulus **9.5 kPa** (middle of the
+  7.4 to 11.7 kPa shear-wave-elastography range measured in transtibial
+  residual limbs, Ranger et al. 2022), exponent 5 (Mukhina 2020). Muscle
+  uncertainty range 7.4 to 16.2 kPa (relaxed to contracted, Steer et al.
+  2020). These are 1.3× (fat) and 1.8× (muscle) stiffer than before.
 * **Muscle is incompressible: its volume does not change under
-  compression, but it still deforms freely in shape.** Its shear response
-  is unchanged (Ogden, Sengeh 2016, shear modulus 5.2 kPa). Volume is held
-  constant with FEBio's penalty method: bulk modulus **5.2 MPa** (1000 ×
-  shear, Poisson ratio 0.4995), on UT4 nodally integrated tetrahedra, which do not lock at this
-  ratio. See *Muscle incompressibility check* below.
+  compression, but it still deforms freely in shape.** Volume is held
+  constant with FEBio's penalty method: bulk modulus **9.5 MPa** (1000 ×
+  shear, Poisson ratio 0.4995), on UT4 nodally integrated tetrahedra, which
+  do not lock at this ratio. See *Muscle incompressibility check* below.
 * Silicone pad: neo-Hookean, shear modulus 23.3 kPa (median of silicone-gel
   liners, Sanders 2004), near-incompressible (k = 100 × shear).
 * Distal cushion: 85A TPU, 2 walls plus 8% gyroid infill, homogenised as a
@@ -255,14 +264,14 @@ that slips still yields a load-displacement curve and the slip load.
 
 ### Muscle incompressibility check
 
-A 20 mm cube of the muscle material, on the same UT4 tetrahedra as the limb,
+A 20 mm cube of the muscle material (computed with the earlier shear values, c = 5.2 kPa; the ratio result carries over), on the same UT4 tetrahedra as the limb,
 is held at its sides and base and indented 5 mm (25%) by a 10 × 10 mm
 indenter, so it can keep its volume only by flowing up around the
 indenter. Run `python scripts/muscle_incompressibility_check.py`:
 
 | Bulk modulus / shear | Bulk modulus (MPa) | Poisson ratio | Volume change at full indent |
 |---|---|---|---|
-| 100 (previous setting, Sengeh 2016) | 0.52 | 0.4950 | −1.71% |
+| 100 (previous setting) | 0.52 | 0.4950 | −1.71% |
 | **1000 (current)** | **5.2** | **0.4995** | **−0.42%** |
 | 10 000 | 52 | 0.5000 | −0.36% |
 
@@ -386,10 +395,18 @@ the span model the lace is an internal load, so the sum over all bodies is
 checked to be zero. In the tangential model the dropped components make the
 sum non-zero; that difference is carried by the joints.
 
-**Petal kinematics.** Each petal is joined to the fixed cup by a prismatic
-joint with translation axis $(\cos\theta_c, \sin\theta_c, 0)$ through its
-centre of mass (penalty 1e4 N/mm, 1e7 N mm/rad), so it keeps its orientation
-and only slides radially. A small
+**Petal kinematics.** Each petal is a rigid body on a frictionless revolute
+joint (its hinge axle). Inward rotation $\varphi$ is limited to
+$\varphi_{max}$ = 2° from the CAD pose by a hinge stop: a rigid tab of
+length $L$ = 30 mm below the hinge swings outward by
+$\delta = L \sin\varphi$, and a stiff bumper on the cup is placed at the
+gap
+
+$$g = L\left[\sin\varphi_{max} - \sin\varphi_0\right] \approx L \sin(\varphi_{max} - \varphi_0)$$
+
+where $\varphi_0$ (0.88 to 0.99°) is the snug-fit closing already applied.
+With $L$ = 30 mm, $g$ = 0.53 to 0.58 mm. The tab-bumper contact is
+frictionless with a stiff penalty. A small
 radial stabiliser spring (0.05 N/mm per petal) is reported separately.
 
 ### 5. Contact
@@ -427,13 +444,14 @@ with $c$ = 0.2014 MPa, $k_1$ = 24.53 MPa, $k_2$ = 0.1327, $\kappa_d$ = 0.1404,
 fibres at ±41° from the circumferential axis, and
 $U = \tfrac{k}{2}\left[\tfrac{J^2-1}{2} - \ln J\right]$, $k$ = 100 c = 20.14 MPa.
 
-**Fat and muscle (2-term symmetric Ogden, Sengeh 2016).**
+**Fat and muscle (2-term symmetric Ogden; tissue set v2).**
 
 $$W = \sum_{i=1}^{2}\frac{c_i}{m_i^2}\left(\bar\lambda_1^{m_i} + \bar\lambda_2^{m_i} + \bar\lambda_3^{m_i} - 3\right) + \frac{k}{2}(\ln J)^2,\quad c_1 = c_2 = c,\ m_2 = -m_1$$
 
-Small-strain shear modulus = $c$. Fat: $c$ = 5.22 kPa, $m$ = 4.79,
-$k$ = 0.522 MPa. Muscle: $c$ = 5.20 kPa, $m$ = 4.78, $k$ = **5.20 MPa**
-(1000 c).
+Small-strain shear modulus $\mu = \tfrac{1}{2}(c_1 + c_2) = c$. Fat:
+$c$ = 6.55 kPa (Mukhina 2020), $m$ = 5, $k$ = 0.655 MPa (100 c). Muscle:
+$c$ = 9.5 kPa (Ranger 2022), $m$ = 5 (Mukhina 2020), $k$ = **9.5 MPa**
+(1000 c). Sengeh 2016 (c ≈ 5.2 kPa, m ≈ 4.8) is no longer used.
 
 **Silicone pad (neo-Hookean, Sanders 2004).** FEBio's uncoupled
 Mooney-Rivlin has $\mu = 2(c_1 + c_2)$. With $c_2$ = 0 and the median
@@ -544,8 +562,8 @@ value, unit, source (DOI), convention conversion, calibration range and
 uncertainty. The FEBio strain-energy forms and their mapping to the sources
 and to ABAQUS are documented in
 [docs/solver_selection.md](docs/solver_selection.md). In short, skin is HGO
-(Ni Annaidh 2012), fat and muscle are 2-term Ogden (Sengeh et al. 2016,
-in-vivo transtibial indentation), and silicone and the cushion are
+(Ni Annaidh 2012), fat and muscle are 2-term Ogden (tissue set v2: Ranger
+et al. 2022 and Mukhina et al. 2020), and silicone and the cushion are
 uncalibrated assumptions. TPU uses the Reppel & Weinberg 2018 Mooney-Rivlin
 fit, which is not inferred from Shore hardness and must be calibrated for
 your infill.

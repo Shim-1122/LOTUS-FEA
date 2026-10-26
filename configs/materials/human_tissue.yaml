@@ -1,7 +1,7 @@
 # Scenario A: human residual-limb tissue.
 # Every parameter carries value + unit + source.  Conversions between the
 # source's strain-energy convention and FEBio's are stated explicitly.
-set_name: human_tissue_v1
+set_name: human_tissue_v2
 scenario: A_human_tissue
 references:
   NiAnnaidh2012:
@@ -10,6 +10,18 @@ references:
   Sengeh2016:
     citation: "Sengeh DM, Moerman KM, Petron A, Herr H. Multi-material 3-D viscoelastic model of a transtibial residuum from in-vivo indentation and MRI data. J Mech Behav Biomed Mater. 2016;59:379-392."
     doi: "10.1016/j.jmbbm.2016.02.020"
+  Ranger2022:
+    citation: "Ranger BJ, Moerman KM, Anthony BW, Herr HM. Constitutive parameter identification of transtibial residual limb soft tissue using ultrasound indentation and shear wave elastography. J Mech Behav Biomed Mater (2023); preprint arXiv:2211.13023 (2022)."
+    doi: "10.48550/arXiv.2211.13023"
+    use: "Shear-wave-elastography shear moduli of transtibial residual-limb soft tissue (predominantly muscle), 7.4-11.7 kPa at the indentation sites; 3 residual limbs of 2 amputees; Ogden fits c = 5.4-10.5 kPa."
+  Mukhina2020:
+    citation: "Mukhina E, Rohan P-Y, Connesson N, Payan Y. Calibration of the fat and muscle hyperelastic material parameters for the assessment of the internal tissue deformation in relation to pressure ulcer prevention. Comput Methods Biomech Biomed Engin. 2020;23(sup1)."
+    doi: "10.1080/10255842.2020.1813426"
+    use: "First-order Ogden, exponent alpha = 5 for fat and muscle; fat mu = 6.55 kPa (case 2, total and muscle thickness matched; 9.64 kPa in case 1). One subject (buttock, in vivo)."
+  Steer2020:
+    citation: "Steer JW, Worsley PR, Browne M, Dickinson A. Key considerations for finite element modelling of the residuum-prosthetic socket interface. Prosthet Orthot Int. 2020;45(2):138-146."
+    doi: "10.1177/0309364620967781"
+    use: "Bulk residuum soft-tissue range: flaccid neo-Hookean C = 2.3-6.2 kPa (Palevski, mu = 2C = 4.6-12.4 kPa) to contracted C = 8.1 kPa (Hoyt, mu = 16.2 kPa). Used for the muscle uncertainty range."
   ReillyBurstein1975:
     citation: "Reilly DT, Burstein AH. The elastic and ultimate properties of compact bone tissue. J Biomech. 1975;8(6):393-405."
     doi: "10.1016/0021-9290(75)90075-5"
@@ -29,7 +41,7 @@ references:
     doi: "10.1017/CBO9781139878326"
     kind: approximation
   TissueBulkRatioApprox:
-    citation: "Approximation: human soft-tissue bulk modulus taken as 100 x shear modulus, the same near-incompressibility ratio Sengeh et al. 2016 used for fat and muscle."
+    citation: "Approximation: soft-tissue bulk modulus taken as 100 x shear modulus (nu = 0.495), the common near-incompressibility choice in residuum FE models (e.g. Steer et al. 2020 use nu = 0.495)."
     doi: "10.1016/j.jmbbm.2016.02.020"
     kind: approximation
   MuscleIncompressibleApprox:
@@ -61,30 +73,30 @@ materials:
     febio_type: "Ogden"
     region: fat
     parameters:
-      c1: {value: 0.00522, unit: MPa, source: Sengeh2016, note: "source Psi = (c/m^2) sum(l~^m + l~^-m - 2) == FEBio Ogden with c1=c2=c, m1=m, m2=-m; small-strain shear modulus = c"}
-      m1: {value: 4.79,    unit: "-", source: Sengeh2016}
-      c2: {value: 0.00522, unit: MPa, source: Sengeh2016}
-      m2: {value: -4.79,   unit: "-", source: Sengeh2016}
-      k:  {value: 0.522,   unit: MPa, source: Sengeh2016, note: "source constrained bulk = 100 c with U = k/2 (ln J)^2, identical to FEBio pressure_model 0"}
-    calibration_range: "Inverse FE of in-vivo indentation (18 sites, 1 subject, bilateral transtibial); indentation ~3.5-7 mm. Source parameters are for a combined SKIN-ADIPOSE layer of 3 mm; used here for the separate fat layer (assumption)."
+      c1: {value: 0.00655, unit: MPa, source: Mukhina2020, note: "FEBio Ogden with c1 = c2 = mu and m2 = -m1 has small-strain shear modulus mu; mu = 6.55 kPa (Mukhina 2020 case 2)"}
+      m1: {value: 5.0,     unit: "-", source: Mukhina2020, note: "Ogden exponent alpha = 5 (fixed in the source)"}
+      c2: {value: 0.00655, unit: MPa, source: Mukhina2020}
+      m2: {value: -5.0,    unit: "-", source: Mukhina2020}
+      k:  {value: 0.655,   unit: MPa, source: TissueBulkRatioApprox, note: "bulk = 100 mu (near-incompressible)"}
+    calibration_range: "In-vivo indentation inverse FE (buttock, 1 subject). Not residual-limb specific; replaces Sengeh 2016 at the team's request (2026-10-26)."
     uncertainty:
-      c1: [0.0026, 0.0104]
+      c1: [0.00655, 0.00964]
   muscle:
     model: Ogden2_symmetric
     febio_type: "Ogden"
     region: muscle
     parameters:
-      c1: {value: 0.00520, unit: MPa, source: Sengeh2016}
-      m1: {value: 4.78,    unit: "-", source: Sengeh2016}
-      c2: {value: 0.00520, unit: MPa, source: Sengeh2016}
-      m2: {value: -4.78,   unit: "-", source: Sengeh2016}
-      k:  {value: 5.20,    unit: MPa, source: MuscleIncompressibleApprox, note: "muscle is treated as incompressible (constant volume, free to change shape): penalty bulk modulus k = 1000 c (nu = 0.4995). Shear response (c1, m1, c2, m2) is unchanged from Sengeh 2016, whose own fit used k = 100 c. README 'Muscle incompressibility check': scripts/muscle_incompressibility_check.py: total volume change -0.42% at 1000 c vs -1.71% at 100 c in a confined 25% indentation; 10000 c gives -0.36%, so the residual is mesh discretisation, not material compressibility."}
-    calibration_range: "In-vivo indentation inverse FE, muscle-soft tissue complex (includes tendon), relaxed muscle, single subject."
+      c1: {value: 0.0095, unit: MPa, source: Ranger2022, note: "small-strain shear modulus mu = 9.5 kPa, the middle of the shear-wave-elastography range measured in transtibial residual limbs (7.4-11.7 kPa)"}
+      m1: {value: 5.0,    unit: "-", source: Mukhina2020, note: "Ogden exponent alpha = 5 for muscle (Mukhina 2020): strain stiffening in compression"}
+      c2: {value: 0.0095, unit: MPa, source: Ranger2022}
+      m2: {value: -5.0,   unit: "-", source: Mukhina2020}
+      k:  {value: 9.5,    unit: MPa, source: MuscleIncompressibleApprox, note: "muscle is incompressible (team requirement): penalty bulk modulus k = 1000 mu (nu = 0.4995); see the README muscle check"}
+    calibration_range: "Residual-limb soft tissue (predominantly muscle), relaxed, in vivo; 3 limbs, 2 amputees (Ranger 2022). Replaces Sengeh 2016 at the team's request (2026-10-26)."
     uncertainty:
-      c1: [0.0026, 0.0104]
+      c1: [0.0074, 0.0162]
     passive_anisotropy:
       enabled: false
-      note: "No calibrated passive-muscle fibre parameters with provenance are supplied. Enabling requires febio_type 'trans iso Mooney-Rivlin' parameters c1,c2,c3,c4,c5,lam_max,k with sources; the code refuses to run otherwise."
+      note: "No calibrated passive-muscle fibre parameters with provenance are supplied."
   bone_deformable:
     model: neo_Hookean_compressible
     febio_type: "neo-Hookean"
@@ -114,3 +126,11 @@ materials:
     calibration_range: "NONE for this print. Small-strain estimate only: a gyroid lattice in compression is linear, then plateaus, then densifies at large strain, which neo-Hookean does not capture. The 2 walls (perimeters) are not resolved; under through-thickness compression they act in series with the core and add little, but they stiffen the edges. Compress a printed cushion to calibrate."
     uncertainty:
       E: [0.036, 0.252]
+  petal_stop:
+    model: neo_Hookean_compressible
+    febio_type: "neo-Hookean"
+    region: "socket hinge-stop bumper (model device that limits petal rotation; not tissue)"
+    parameters:
+      E: {value: 2000.0, unit: MPa, source: assumption, note: "stiff nylon-like bumper so the rotation limit is sharp"}
+      v: {value: 0.3,    unit: "-", source: assumption}
+    calibration_range: "Model device; its stiffness only sets how sharply the rotation limit acts."

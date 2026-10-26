@@ -213,13 +213,13 @@ def _assemble(cfg, model, mset, traction_model=None):
     for b in model.blocks:
         if b.formulation == "rigid" or (b.region.startswith("bone:") and bone_mode == "rigid"):
             mname = f"rigid_{b.name}" if not b.name.startswith("petal") else f"rigid_{b.name.split('_')[0]}"
-            if b.name in ("distal_cup", "cup_wall"):
+            if b.name in ("distal_cup", "cup_wall") or b.material == "rigid_cup":
                 # The CAD cup wall + hinge shield and the puck seat are one rigid part. Before 2026-10-26
                 # the wall became its own rigid body with no boundary condition and drifted away
                 # (tens of metres) in every LOTUS V5 run, so it never carried load.
                 mname = "rigid_cup"
             members = [bb for bb in model.blocks if (f"rigid_{bb.name}" if not bb.name.startswith("petal")
-                       else f"rigid_{bb.name.split('_')[0]}") == mname or (mname == "rigid_cup" and bb.name in ("distal_cup", "cup_wall"))]
+                       else f"rigid_{bb.name.split('_')[0]}") == mname or (mname == "rigid_cup" and (bb.name in ("distal_cup", "cup_wall") or bb.material == "rigid_cup"))]
             members = [bb for bb in members if bb.formulation == "rigid" or (bb.region.startswith("bone:") and bone_mode == "rigid")]
             if mname not in spec.materials:
                 if len(members) > 1:
@@ -310,6 +310,11 @@ def _assemble(cfg, model, mset, traction_model=None):
         if S.get("petal_motion", "hinged") == "radial":
             rep["assumptions"].append("Petals do not rotate during loading: each is a rigid body on a frictionless prismatic "
                                       "joint to the cup along its own radial direction (penalty 1e4 N/mm, 1e7 N mm/rad).")
+        rl = (S.get("cad") or {}).get("rotation_limit")
+        if rl and S.get("petal_motion", "hinged") != "radial":
+            rep["assumptions"].append(f"Each rigid petal rotates about its hinge but at most {rl.get('max_inward_deg', 2.0)} deg inward "
+                                      f"(measured from the {rl.get('measured_from', 'cad')} pose): a rigid tab below the hinge meets a "
+                                      "stiff bumper on the cup (frictionless contact).")
         rep["assumptions"].append((f"Each petal hinge is a frictionless revolute joint (penalty 1e4 N/mm, 1e7 N mm/rad). " if S.get("petal_motion", "hinged") != "radial" else "") +
                                   f"A radial stabiliser spring k = {k_stab} N/mm per petal is NUMERICAL STABILISATION; "
                                   "its force and energy are reported.")
@@ -320,6 +325,13 @@ def _assemble(cfg, model, mset, traction_model=None):
         pairs += [tuple(x) for x in model.meta.get("extra_contact_pairs", [])]
         for prim, sec, name in pairs:
             if prim not in model.surfaces or sec not in model.surfaces or len(model.surfaces[prim].conn) == 0:
+                continue
+            if name.startswith("stop_"):
+                # hinge stop: frictionless, stiff penalty so the rotation limit is sharp
+                spec.contacts.append({"type": "sliding-elastic", "name": name, "primary": prim, "secondary": sec, "params": {
+                    "laugon": "PENALTY", "tolerance": 0.2, "gaptol": 0, "penalty": 1.0, "auto_penalty": 1, "two_pass": 0,
+                    "search_tol": 0.01, "search_radius": 5.0, "symmetric_stiffness": 0, "tension": 0, "fric_coeff": 0.0,
+                    "minaug": 0, "maxaug": 10}})
                 continue
             if ctype == "sliding-elastic":
                 params = {"laugon": "AUGLAG" if C["augmented_lagrangian"] else "PENALTY", "tolerance": 0.2, "gaptol": 0,

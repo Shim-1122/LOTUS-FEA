@@ -50,12 +50,13 @@ represents the real limb). No validation has been performed.
   approximation traced from a sketch (16 mm deep, posterior side of the
   lateral petal assumed), not the final CAD cut.
 * In the LOTUS V5 configs the lace is a perfectly tangential (hoop) force
-  and the petals cannot rotate (they only slide radially on prismatic
-  joints). Both are idealisations chosen by the team: real petals flex and
-  pivot slightly, and the lace's axial and radial chord components are
+  and the rigid petals rotate on their hinges by at most 2° inward (a
+  modelled hinge stop). Both are idealisations chosen by the team: real
+  petals flex, and the lace's axial and radial chord components are
   dropped.
 * Runs made before 2026-10-26 had an unconstrained cup wall (it drifted
-  away and carried no load) and hinged, rotating petals.
+  away and carried no load) and no rotation limit (the medial petal turned
+  11 to 14°).
 * Each petal has a small radial stabiliser spring (default 0.05 N/mm). It is
   numerical stabilisation. Its force and share of the cable moment are
   reported.
@@ -68,9 +69,12 @@ represents the real limb). No validation has been performed.
 * Skin uses an HGO fit to excised back skin from elderly donors (Ni Annaidh
   2012, uniaxial tension). Its bulk modulus is approximated as 100 x shear,
   the same ratio used for fat and muscle.
-* Fat and muscle use Ogden fits from inverse FE of in-vivo indentation of a
-  single transtibial residuum (Sengeh 2016). The fat layer uses that study's
-  combined skin-adipose parameters. Muscle is treated as incompressible
+* Fat and muscle use tissue set v2: muscle shear modulus 9.5 kPa from
+  shear-wave elastography of 3 residual limbs (Ranger 2022) and an Ogden
+  exponent of 5 and fat shear modulus 6.55 kPa from one subject's buttock
+  (Mukhina 2020). Neither is a measurement of this patient, and tissue
+  under socket pressure stiffens further (shear-wave speed roughly doubles
+  under light compression garments, Ranger 2024). Muscle is treated as incompressible
   (constant volume, free to change shape) by a penalty bulk modulus, so a
   small residual volume change remains; see the README check.
 * The silicone pads stand in for medical-grade gel-liner silicone. They use

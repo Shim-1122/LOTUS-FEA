@@ -361,6 +361,66 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
         rep["snug_fit"] = ("Each CAD petal (closed state) is rotated about its own hinge axle until the "
                            f"{snug.get('percentile', 20.0):g}th percentile of its pad nodes is {snug.get('interference', 0.1):g} mm into the skin, "
                            "so the solve starts with the pads in contact (the lace closes the remaining design clearance).")
+    # ---- hinge stops: each petal may rotate at most N degrees inward ----------
+    # A rigid tab hangs below each hinge (part of the petal). When the petal's top swings inward,
+    # the tab's lower end swings outward and meets a stiff bumper fixed to the cup. The gap is set
+    # so contact starts exactly at the rotation limit (measured from the CAD closed position by
+    # default, so the snug-fit closing rotation counts toward it). Ordinary contact, frictionless.
+    stop_pairs = []
+    lim = cad.get("rotation_limit")
+    if lim:
+        lim_deg = float(lim.get("max_inward_deg", 2.0))
+        L, wdt, tt = float(lim.get("lever_mm", 30.0)), float(lim.get("width_mm", 10.0)), float(lim.get("tab_thickness_mm", 6.0))
+        bt, bk, bh = float(lim.get("bumper_mm", 2.0)), 3.0, float(lim.get("bumper_height_mm", 8.0))
+        rep["rotation_limit"] = {"max_inward_deg": lim_deg, "measured_from": lim.get("measured_from", "cad"), "lever_mm": L, "petals": {}}
+
+        def hex8(g, i, j, k):  # g: node-id grid [radial][axial][z]; hex between index i..i+1 etc, positive volume
+            h = [g[i, j, k], g[i + 1, j, k], g[i + 1, j + 1, k], g[i, j + 1, k],
+                 g[i, j, k + 1], g[i + 1, j, k + 1], g[i + 1, j + 1, k + 1], g[i, j + 1, k + 1]]
+            P = model.nodes[h]
+            if np.dot(np.cross(P[1] - P[0], P[3] - P[0]), P[4] - P[0]) < 0:
+                h = [h[0], h[3], h[2], h[1], h[4], h[7], h[6], h[5]]
+            return h
+
+        def quad(g, i, toward):  # face at radial index i, normal along `toward`
+            q = [g[i, 0, 0], g[i, 1, 0], g[i, 1, 1], g[i, 0, 1]]
+            P = model.nodes[q]
+            if np.dot(np.cross(P[1] - P[0], P[3] - P[0]), toward) < 0:
+                q = q[::-1]
+            return np.array([q])
+
+        for p in petals:
+            o = np.asarray(p.hinge_origin, float); a = np.asarray(p.hinge_axis, float); a /= np.linalg.norm(a)
+            er = np.array([o[0], o[1], 0.0]); er /= np.linalg.norm(er)
+            ez = np.array([0.0, 0.0, 1.0]); ea = np.cross(ez, er)        # horizontal, along the hinge
+            ang0 = closing.get(p.name, (None, None, 0.0))[2]
+            probe = o + 50.0 * ez                                        # a point above the hinge
+            sgn = 1.0 if np.linalg.norm(_rotate_about(probe[None], o, a, 1e-3)[0, :2]) < np.linalg.norm(probe[:2]) else -1.0
+            used = abs(np.degrees(ang0)) if lim.get("measured_from", "cad") == "cad" else 0.0
+            rem = max(lim_deg - used, 0.0)
+            tab = np.array([[[o + r * er + s_ * ea + z * ez for z in (-L, 0.0)] for s_ in (-wdt / 2, wdt / 2)] for r in (-tt / 2, tt / 2)])
+            if ang0:
+                tab = _rotate_about(tab.reshape(-1, 3), o, a, ang0).reshape(tab.shape)
+            pt = tab[1, :, 0].mean(0)                                    # outer lower edge of the tab
+            moved = _rotate_about(pt[None], o, a, sgn * np.radians(rem))[0]
+            gap = float(np.dot(moved - pt, er))
+            r0 = float(np.dot(pt - o, er)) + gap
+            zb = float(pt[2])
+            stop = np.array([[[o + r * er + s_ * ea + (z - o[2]) * ez for z in (zb - 1.0, zb + bh)]
+                              for s_ in (-wdt / 2 - 2, wdt / 2 + 2)] for r in (r0, r0 + bt, r0 + bt + bk)])
+            tg = model.add_nodes(tab.reshape(-1, 3)).reshape(2, 2, 2)
+            sg = model.add_nodes(stop.reshape(-1, 3)).reshape(3, 2, 2)
+            model.blocks.append(ElementBlock(f"{p.name}_tab", "hex8", np.array([hex8(tg, 0, 0, 0)]), f"rigid_{p.name}",
+                                             f"socket:{p.name} hinge-stop tab (rigid, part of petal)", "rigid"))
+            model.blocks.append(ElementBlock(f"stopbump{p.index + 1}", "hex8", np.array([hex8(sg, 0, 0, 0)]), "petal_stop",
+                                             f"socket:hinge-stop bumper for {p.name}", "standard"))
+            model.blocks.append(ElementBlock(f"cupstop{p.index + 1}", "hex8", np.array([hex8(sg, 1, 0, 0)]), "rigid_cup",
+                                             f"socket:hinge-stop backing for {p.name} (rigid cup)", "rigid"))
+            model.surfaces[f"stop{p.index + 1}_bumper"] = Surface(f"stop{p.index + 1}_bumper", "quad4", quad(sg, 0, -er))
+            model.surfaces[f"stop{p.index + 1}_tab"] = Surface(f"stop{p.index + 1}_tab", "quad4", quad(tg, 1, er))
+            stop_pairs.append((f"stop{p.index + 1}_bumper", f"stop{p.index + 1}_tab", f"stop_{p.name}"))
+            rep["rotation_limit"]["petals"][p.name] = {"closing_rotation_deg": used, "remaining_inward_deg": rem,
+                                                       "initial_gap_mm": gap, "inward_sign": sgn}
     # ---- rigid cup wall from the CAD cavity ---------------------------------
     cup = _tm(parts, CUP_PARTS)
     z_tip = float(skin.vertices[:, 2].min())
@@ -443,7 +503,7 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
     model.surfaces["skin_free"] = Surface("skin_free", "tri3", skin_faces[zone < 0])
     model.meta["petals"] = petals
     model.meta["socket_cfg"] = dict(cfg)
-    model.meta["extra_contact_pairs"] = [("skin_cup_zone", "cup_wall_contact", "contact_cup_wall")]
+    model.meta["extra_contact_pairs"] = [("skin_cup_zone", "cup_wall_contact", "contact_cup_wall")] + stop_pairs
     if cad.get("lace", "tubes") == "tubes":
         model.meta["cad_route"] = _cad_lace_route(parts, petals, names, closing, rep)
     # initial clearance of each socket surface to the skin (+ = gap)

@@ -22,7 +22,7 @@ import tempfile
 
 import numpy as np
 
-C1, M1 = 0.0052, 4.78          # Sengeh 2016 muscle (MPa, -)
+C1, M1 = 0.0095, 5.0           # muscle: Ranger 2022 shear modulus, Mukhina 2020 exponent (MPa, -)
 L, N, INDENT = 20.0, 8, 5.0    # cube edge (mm), divisions, indentation (mm)
 
 
