@@ -271,8 +271,30 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
             raise RuntimeError(f"{pn}: could not find a fully covered pad grid")
         R_in = np.array([[H[j][k][0] for j in range(nz)] for k in range(nt)])
         R_mid = np.array([[H[j][k][1] for j in range(nz)] for k in range(nt)])
+        Zg = np.broadcast_to(Z, (nt, nz)).copy()
+        trim = next((t for t in cad.get("trims", []) if t.get("petal") == pn), None)
+        if trim:
+            # swept top-edge trim (relief): per column, the top row is lowered to z_cut(theta) and
+            # the column is re-sampled, so the pad and petal follow the trimmed profile smoothly
+            u = (np.rad2deg(th) - (thc + lo)) / (hi - lo)              # 0 .. 1 across the petal
+            if trim.get("from", "low_theta") == "high_theta":
+                u = 1.0 - u
+            f, r = float(trim["flat_frac"]), float(trim["ramp_frac"])
+            w = np.clip((u - f) / max(r, 1e-9), 0.0, 1.0)
+            w = 0.5 - 0.5 * np.cos(np.pi * w)                          # smooth ramp
+            ztop_k = zhi - float(trim["depth_mm"]) * (1.0 - w)
+            for k in range(nt):
+                Zg[k] = np.linspace(zlo, ztop_k[k], nz)
+                hk = [_ray_hits(pad, z, th[k:k + 1])[0] for z in Zg[k]]
+                if any(len(x) < 2 for x in hk):
+                    raise RuntimeError(f"{pn}: trimmed column {k} missed the pad")
+                R_in[k] = [x[0] for x in hk]
+                R_mid[k] = [x[1] for x in hk]
+            rep["petals"].setdefault(f"petal{i + 1}", {})["trim"] = {
+                **trim, "z_top_min_mm": float(ztop_k.min()), "z_top_max_mm": float(ztop_k.max()),
+                "note": "approximate swept top-edge relief applied in the model (not from CAD)"}
         er = np.stack([np.cos(th), np.sin(th), np.zeros(nt)], axis=1)[:, None, :]
-        base = np.concatenate([np.zeros((nt, nz, 2)), np.broadcast_to(Z, (nt, nz))[..., None]], axis=2)
+        base = np.concatenate([np.zeros((nt, nz, 2)), Zg[..., None]], axis=2)
         ids_in = model.add_nodes((base + R_in[..., None] * er).reshape(-1, 3)).reshape(nt, nz)
         ids_mid = model.add_nodes((base + R_mid[..., None] * er).reshape(-1, 3)).reshape(nt, nz)
         ids_out = model.add_nodes((base + (R_mid + ts)[..., None] * er).reshape(-1, 3)).reshape(nt, nz)
@@ -303,12 +325,12 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
         thick = np.linalg.norm(Xn[ids_mid] - Xn[ids_in], axis=2)
         pad_area = float(pad.area_faces[np.einsum("ij,ij->i", pad.face_normals, -np.c_[c[:, :2], 0 * c[:, 2]] /
                                                   np.linalg.norm(c[:, :2], axis=1)[:, None]) > 0.6].sum())
-        rep["petals"][name] = {"cad_name": pn, "theta_center_deg": thc, "angular_span_deg": [thc + lo, thc + hi],
+        rep["petals"].setdefault(name, {}).update({"cad_name": pn, "theta_center_deg": thc, "angular_span_deg": [thc + lo, thc + hi],
                                "z_range_mm": [float(zlo), float(zhi)], "grid": [int(nt), int(nz)],
                                "pad_thickness_mm": {"min": float(thick.min()), "median": float(np.median(thick)), "max": float(thick.max())},
                                "meshed_pad_contact_area_mm2": float(_quad_area(Xn, quads).sum()),
                                "cad_pad_inner_area_mm2": pad_area,
-                               "hinge_origin": ax_c.tolist(), "hinge_axis": ax_d.tolist(), "com_cad": com.tolist()}
+                               "hinge_origin": ax_c.tolist(), "hinge_axis": ax_d.tolist(), "com_cad": com.tolist()})
     # ---- closing rotation (start in contact) --------------------------------
     import trimesh
     sk = trimesh.Trimesh(skin.vertices, skin.faces, process=False)

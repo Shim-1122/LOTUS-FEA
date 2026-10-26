@@ -1,0 +1,162 @@
+# LOTUS FEA stance-grip simulation (LOTUS V5 CAD socket, tentative).
+# Step 1: tighten the RevoFit lace to 60 lbf, the design tension from docs/GRIP_ESTIMATE.md
+#   (the governing load, the walking stance peak, x 1.3 headroom, petals carrying >= 85%).
+# Step 2: push the socket proximally onto the limb (displacement-controlled, 10 mm) and record
+#   the axial reaction: the push needed to reach 1.2 kN (1.3 x 923 N stance peak), the share
+#   carried by the distal end (must stay < 15%), slip and peak pressures.
+#   Displacement control is used instead of force control so the run still gives a load-
+#   displacement curve (and the slip load) if the grip is insufficient.
+# Same materials, contact, loads and solver settings as the earlier
+# supplied-limb run; the socket now has four petals (current design), and the anatomy changed:
+#   * skin and fat thickness are MEASURED per skin vertex from the segmented
+#     inner skin surface and the outer muscle surface (no longer assumed);
+#   * four bones, including a candidate tibia (part_1) that was missing before.
+# Bone identities are heuristic (shape/size/position); confirm them.
+run_name: lotus_v5_stance_60lbf_relief
+geometry:
+  source: files
+  patient_data: false   # published by the owner's decision (see data/limb/README.md)
+  skin:
+    path: ../data/limb/skin.stl
+    unit: mm
+    component: 0          # outer skin surface (the file holds outer + inner shells)
+    name: skin_envelope
+  segmented_layers:
+    skin_inner: {path: ../data/limb/skin.stl, unit: mm, component: 1}
+    fat_inner: {path: ../data/limb/muscle.stl, unit: mm, component: 0}
+    note: skin inner surface = fat outer surface; muscle outer surface = fat inner surface
+  bones:
+  - name: tibia_candidate
+    path: ../data/limb/part_1.stl
+    unit: mm
+    role: tibia (HEURISTIC label, unconfirmed; 150 mm long, cavity in muscle.stl)
+  - name: femur_candidate
+    path: ../data/limb/part_2.stl
+    unit: mm
+    role: distal femur (HEURISTIC label, unconfirmed)
+  - name: patella_candidate
+    path: ../data/limb/part_3.stl
+    unit: mm
+    role: patella (HEURISTIC label, unconfirmed; cavity in muscle.stl)
+  - name: fibula_candidate
+    path: ../data/limb/part_4.stl
+    unit: mm
+    role: fibula (HEURISTIC label, unconfirmed; slender, posterolateral to part_1)
+  expected_bones:
+  - tibia
+  - fibula
+  alignment:
+    method: matrix
+    reason: "limb into the LOTUS V5 socket frame (pose fitted by scripts/fit_socket_pose.py), rotated so +y is anterior, distal apex at z = 0"
+    source_to_model:
+    - [-0.999957, -0.009267, 0.0, -29.017539]
+    - [0.009267, -0.999957, 0.0, 80.491421]
+    - [0.0, 0.0, 1.0, 191.691757]
+    - [0.0, 0.0, 0.0, 1.0]
+  remesh:
+    skin_size: {value: 9.0, unit: mm}
+    bone_size: {value: 6.0, unit: mm}
+layers:
+  skin_thickness: {value: 1.5, unit: mm}   # unused when segmented_layers is given
+  fat_thickness: {value: 3.0, unit: mm}    # unused when segmented_layers is given
+  max_fraction_total: 0.9
+  skin_fiber_reference: circumferential
+  muscle_formulation: ut4
+materials:
+  set: materials/human_tissue.yaml
+  regions: {skin: skin, fat: fat, muscle: muscle, proximal_cap: muscle,
+            silicone_pad: silicone_pad, distal_cushion: distal_cushion}
+  bones: rigid
+supports:
+  bones:
+    femur_candidate: fixed
+    tibia_candidate: fixed
+    fibula_candidate: fixed
+    patella_candidate: free
+  proximal_cut: axial_roller
+load_model: resolved_contact
+socket:
+  enabled: true
+  # LOTUS V5 (closed) CAD, used TENTATIVELY: petals, silicone pads, hinge axles and
+  # cup/hinge-shield cavity come from the CAD; cushion and lace routing stay parametric.
+  # The STEP file is not in this repository (data/socket/ is git-ignored).
+  cad:
+    path: ../data/socket/LOTUS_V5_Closed.step
+    tessellation_size: 3.0
+    petals: [anterior, medial, posterior, lateral]   # ascending angle; anterior carries the dial boss
+    cap_height: 8.0          # distal skin cap (mm above the apex) that rests on the cushion
+    distal_cushion: true
+    edge_margin_deg: 1.0
+    trims:                   # approximate fibular relief (team sketch, 2026-10-26): swept scallop off the
+    - petal: lateral         # lateral petal's top edge on its posterior side, smooth ramp back to full height
+      from: low_theta        # low-theta edge = posterior side of the lateral petal in the model frame
+      depth_mm: 16.0
+      flat_frac: 0.45
+      ramp_frac: 0.25
+    cad_to_model:            # socket frame -> model frame (180 deg about z so +y is anterior; z shift = apex)
+    - [-1.0, 0.0, 0.0, 0.0]
+    - [0.0, -1.0, 0.0, 0.0]
+    - [0.0, 0.0, 1.0, 191.700428]
+    - [0.0, 0.0, 0.0, 1.0]
+  n_petals: 4
+  pad_thickness:
+    value: 3.0
+    unit: mm
+  shell_thickness:
+    value: 4.0
+    unit: mm
+  initial_gap:
+    value: -0.1
+    unit: mm
+  element_size:
+    value: 8.0
+    unit: mm
+  cushion_thickness:
+    value: 6.0
+    unit: mm
+  cup_thickness:
+    value: 4.0
+    unit: mm
+  stabilizer_k:
+    value: 0.05
+    unit: N/mm
+contact:
+  type: sliding-elastic
+  friction: 0.5
+  augmented_lagrangian: false
+  penalty_scale: 0.1
+tension_basis: design
+cable:
+  strand_tension:
+    value: 60               # design tension (docs/GRIP_ESTIMATE.md), 30% of the 200 lbf rating
+    unit: lbf
+  design_source: "docs/GRIP_ESTIMATE.md (walking stance peak x 1.3 headroom, petals >= 85%)"
+  tension_is_example: false
+  rated_tension:            # RevoFit line-tension rating, stated by the LOTUS team (2026-10-26);
+    value: 200              # the team also reports ~300 lbf reliably in independent testing
+    unit: lbf
+    source: "RevoFit rating as stated by the LOTUS team, 2026-10-26 (manufacturer document not attached)"
+    meaning: strand_tension
+  rating_fractions:
+  - 0.25
+  - 0.5
+  - 0.75
+  - 1.0
+  guide_friction: 0.0
+  routing: default
+  route_height_fraction: 0.75
+load_cases:
+  tightening:
+    enabled: true
+  pullout:
+    enabled: false
+  body_weight:
+    enabled: true
+    displacement:
+      value: 10.0
+      unit: mm
+solver:
+  n_steps: 100
+  max_retries: 10
+  max_ups: 0
+  etol: 0.01   # FEBio default; 1e-3 stalled on a friction stick-slip 2-cycle at t=0.645 (run supplied_limb_T75_newton)
