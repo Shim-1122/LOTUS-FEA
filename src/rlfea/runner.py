@@ -143,6 +143,8 @@ def postprocess(run_path: str) -> dict:
     model, spec = pk["model"], pk["spec"]
     status = P.read_status(run_path)
     cfg = json.load(open(os.path.join(run_path, "config.resolved.json")))
+    # skin-side contact surfaces only (hinge-stop bumpers are quads and not skin)
+    spec.log_surfaces = [s_ for s_ in spec.log_surfaces if model.surfaces[s_].conn.shape[1] == 3]
     raw = RS.load_raw(os.path.join(run_path, "solver"), model, spec.log_surfaces)
     from .solvers.febio import spec_surfaces
     raw["_all_surfaces"] = list(spec_surfaces(model, spec).keys())

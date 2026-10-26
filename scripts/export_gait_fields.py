@@ -23,12 +23,11 @@ import pyvista as pv
 
 RUNS = {
     # key: (run dir, lace tension at t = 1 in lbf, output times to export)
-    "base": ("runs/lotus_v5_stance_25lbf_freecup", 25.0, [0.25, 0.5, 0.75, 1.0, 1.1, 1.2, 1.3]),
-    "relief": ("runs/lotus_v5_stance_60lbf_relief", 60.0, [0.1, 0.2, 0.3, 0.4, 0.5]),
+    # 2026-10-26 model: rigid petals with a 2 deg hinge stop, fixed cup wall, tissue set v2.
+    "base": ("runs/lotus_v5_stance_25lbf", 25.0, [0.25, 0.5, 0.75, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]),
 }
 FIGS = [("sections", "Mid-limb sections at 25 lbf, end of tightening: displacement, max principal log strain, hydrostatic pressure, max principal stress"),
         ("contact", "Skin contact at 25 lbf: contact pressure, tangential traction, stick/slip, gap (two views)")]
-BLOCKS = {"pad": [8, 10, 12, 14], "shell": [9, 11, 13, 15], "cup": [16], "cushion": [17]}
 
 
 def surf_faces(vol, ids):
@@ -57,7 +56,12 @@ def main():
         skin = surf_faces(v0, [0]); fat = set(map(tuple, np.sort(surf_faces(v0, [1]), 1)))
         skin = skin[[tuple(f) not in fat for f in np.sort(skin, 1)]]
         parts = {"skin": skin}
-        for name, ids in BLOCKS.items():
+        bl = {b["name"]: b["id"] for b in json.load(open(f"{run}/mesh/blocks.json"))}
+        groups = {"pad": [i for n_, i in bl.items() if n_.endswith("_pad")],
+                  "shell": [i for n_, i in bl.items() if n_.endswith("_shell") or n_.endswith("_tab")],
+                  "cup": [i for n_, i in bl.items() if n_ == "cup_wall" or n_.startswith("cupstop") or n_.startswith("stopbump")],
+                  "cushion": [i for n_, i in bl.items() if n_ == "distal_cushion"]}
+        for name, ids in groups.items():
             parts[name] = surf_faces(v0, ids)
         used = np.unique(np.concatenate([f.ravel() for f in parts.values()]))
         remap = -np.ones(v0.n_points, int); remap[used] = np.arange(len(used))
@@ -75,7 +79,7 @@ def main():
             # Draw it attached to the distal cup (same rigid motion) so the picture is not misleading.
             cupw = np.isin(used, np.unique(parts["cup"]))
             if np.abs(U[cupw]).max() > 50:
-                sub = vol.extract_cells(vol.cell_data["block_id"] == 18)
+                sub = vol.extract_cells(vol.cell_data["block_id"] == bl["distal_cup"])
                 U[cupw] = sub.point_data["displacement"].mean(0)
                 sset.setdefault("notes", []).append(f"t={t}: cup wall drawn attached to the distal cup (it was unconstrained in this run)")
             # contact fields: face -> node

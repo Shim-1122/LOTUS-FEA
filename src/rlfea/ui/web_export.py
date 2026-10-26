@@ -53,6 +53,7 @@ def export(run_path: str, out_html: str, max_states: int = 12) -> str:
     cfg = json.load(open(os.path.join(run_path, "config.resolved.json")))
     import pyvista as pv
     X0 = model.nodes
+    spec.log_surfaces = [s_ for s_ in spec.log_surfaces if model.surfaces[s_].conn.shape[1] == 3]
     skin_tris = np.vstack([model.surfaces[s].conn for s in spec.log_surfaces] + ([model.surfaces["skin_free"].conn] if "skin_free" in model.surfaces else []))
     n_contact = sum(len(model.surfaces[s].conn) for s in spec.log_surfaces)
     bones = [(b.etype, b.conn) for b in model.blocks if b.region.startswith("bone")]

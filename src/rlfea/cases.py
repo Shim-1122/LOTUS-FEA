@@ -342,7 +342,8 @@ def _assemble(cfg, model, mset, traction_model=None):
             else:
                 params = {"laugon": "PENALTY", "tolerance": 0.2, "penalty": C["penalty_scale"], "auto_penalty": 1}
             spec.contacts.append({"type": ctype, "name": name, "primary": prim, "secondary": sec, "params": params})
-        spec.log_surfaces = [p for p, q, _ in pairs if p in model.surfaces and q in model.surfaces and len(model.surfaces[p].conn)]
+        spec.log_surfaces = [p for p, q, nm in pairs if p in model.surfaces and q in model.surfaces and len(model.surfaces[p].conn)
+                             and not nm.startswith("stop_")]
         spec.log_rigid = True
         spec.log_connectors = True
         rep["contact"] = {"type": ctype, "friction": C["friction"], "enforcement": "augmented Lagrangian" if C["augmented_lagrangian"] else "penalty",

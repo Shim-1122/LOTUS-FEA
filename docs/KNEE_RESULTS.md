@@ -167,3 +167,26 @@ FAILED after 3 mm of the 10 mm (t = 1.3). Full table: [STANCE_CHECK_25lbf.md](ST
 * Distal share 19 to 25%, above the 15% limit at this lace tension.
 * Peak contact pressure 478 kPa at 25 lbf, 647 kPa at 3 mm of push (penalty contact, approximate).
 
+## 25 lbf stance, current model (run `lotus_v5_stance_25lbf`, 2026-10-26)
+
+Model changes since the runs above: rigid petals on their hinges with a **2° inward
+rotation limit** (hinge stop, from the CAD pose), the **cup wall fixed** to the cup
+(it was an unconstrained body before), **tissue set v2** (muscle 9.5 kPa, fat 6.55 kPa,
+Ogden exponent 5), lace as a purely tangential force. Full table:
+[STANCE_CHECK_25lbf.md](STANCE_CHECK_25lbf.md).
+
+**State: CONVERGED through tightening and the full 10 mm push** (first run to do so).
+
+* Petal rotation from the CAD pose stays at 2.1 to 2.2° (the stop holds; 0.1 to 0.2°
+  of penalty give). Without the stop the medial petal had turned 11 to 14°.
+* Three petals reach their stops at about 19 lbf (t = 0.75). Above that, extra lace
+  tension loads the stops, not the limb: at 25 lbf the pads press on the skin with
+  about 300 N in total.
+* At 25 lbf: peak pad pressure 94 kPa (was 478 kPa), minimum volume ratio J 0.86
+  (was 0.62).
+* At the end of the 10 mm push: axial load **680 N** (57% of the 1.2 kN target), still
+  rising, slip area 48% (no gross slip). Petals 406 N (60%), cushion 81 N (12%),
+  **cup wall 195 N (29%)**. Peak pressure 174 kPa, minimum J 0.58.
+* The cushion alone is under the 15% limit, but cushion plus cup wall carry 41% of
+  the load, and the petals carry 60%, below the 85% requirement.
+
