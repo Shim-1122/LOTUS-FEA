@@ -27,7 +27,12 @@ represents the real limb). No validation has been performed.
   joint capsule are modelled.
 
 ## Socket and loads
-* No current socket CAD was supplied, and V6 is excluded. The petal socket
+* With `configs/lotus_v5_socket.yaml`, the petals, pads, hinge axles and
+  cup cavity come from the LOTUS V5 CAD (used tentatively). The petals are
+  rotated about 1° about their hinges so the pads start in contact, cup
+  points inside the skin are moved out, and the hinge shield is treated as
+  rigid. The cushion is not in the CAD and stays parametric.
+* Otherwise (`configs/knee_limb_segmented.yaml`), the petal socket
   is a **provisional parametric model**: four rigid petals (anterior, posterior, medial, lateral) with silicone pads,
   hinges, a distal cup and a cushion. The Anclote suction puck, the plate and
   the Bulldog adapter are treated only as the rigid support of the cup.

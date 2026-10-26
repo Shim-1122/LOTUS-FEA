@@ -26,6 +26,9 @@ senior design project on a nighttime prosthesis. It covers:
 * `configs/knee_limb_segmented.yaml` is the main model. Skin and fat
   thickness are **measured** at every skin vertex from the segmented inner
   surfaces, and the four bones include a candidate tibia and fibula.
+* `configs/lotus_v5_socket.yaml` puts the same limb inside the LOTUS V5
+  socket CAD, with the lace through the hollow petal tubes. The STEP file is
+  not included; place it at `data/socket/LOTUS_V5_Closed.step`.
 * `configs/synthetic_human.yaml` is a fully synthetic limb used for
   verification and for the sensitivity study.
 * `site/` is a static website (results page, 3D viewer and report) that is
