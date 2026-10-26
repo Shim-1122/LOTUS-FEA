@@ -155,7 +155,12 @@ def resolve(raw: dict) -> tuple[dict, list[str]]:
         cb["rated_tension_N"] = quantity({"value": rt["value"], "unit": rt["unit"]}, "force")
     else:
         warn.append("No verified RevoFit rated strand tension supplied: rated-tension cases (25/50/75/100%) are NOT run.")
-    if cb.get("tension_is_example", True) and "strand_tension" in cb:
+    if cfg.get("tension_basis") == "design":
+        if not cb.get("design_source"):
+            raise ConfigError("tension_basis: design requires cable.design_source (where the design tension comes from)")
+        warn.append(f"Strand tension {cb['strand_tension']:.3g} N ({cb['strand_tension'] / 4.4482216:.0f} lbf) is the DESIGN "
+                    f"tension from {cb['design_source']}; it is an estimate, not a measured requirement.")
+    elif cb.get("tension_is_example", True) and "strand_tension" in cb:
         warn.append(f"Strand tension {cb['strand_tension']:.3g} N is an EXAMPLE value, not a verified rating.")
     lc = cfg["load_cases"]
     for k in ("pullout", "body_weight"):

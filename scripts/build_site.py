@@ -38,7 +38,7 @@ def _distortion(run, summ) -> str:
     if n == 0:
         return ""
     z = g.cell_centers().points[J < 0.8, 2]
-    return (f"<li>At 75 N, {n} of {len(J)} elements ({100 * n / len(J):.2f}%) have a volume ratio J below 0.8 "
+    return (f"<li>At full lace tension, {n} of {len(J)} elements ({100 * n / len(J):.2f}%) have a volume ratio J below 0.8 "
             f"(lowest {J.min():.2f}). They sit in one small patch of muscle, {z.min():.0f} to {z.max():.0f} mm "
             f"above the distal end. "
             f"Near-incompressible muscle should barely change volume, so treat that spot as a mesh-quality "
@@ -78,11 +78,17 @@ def main():
         stat(f"{s1['deformation']['min_J']:.2f}", "Lowest volume ratio J", "1 = unchanged"),
         stat(f"{c1.get('max_penetration_mm', 0):.2f} mm", "Max penetration", "penalty contact regularisation"),
     ])
+    lc2 = cfg["load_cases"]
     rows = []
     for s in states:
         t = s["time"]
         if t > 1 + 1e-9 or abs(round(t * 4) - t * 4) < 1e-6:   # quarter steps of tightening + all pull-out outputs
-            load_txt = f"lace {T * t:.1f} N" if t <= 1 + 1e-9 else f"lace {T:.0f} N + pull-out {2.0 * (t - 1):.2f} mm"
+            if t <= 1 + 1e-9:
+                load_txt = f"lace {T * t:.0f} N ({T * t / 4.4482:.0f} lbf)"
+            elif lc2.get("body_weight", {}).get("enabled"):
+                load_txt = f"lace {T:.0f} N + push {lc2['body_weight']['displacement'] * (t - 1):.1f} mm"
+            else:
+                load_txt = f"lace {T:.0f} N + pull-out {lc2.get('pullout', {}).get('displacement', 2.0) * (t - 1):.2f} mm"
             c = s.get("contact", {})
             rows.append(f"<tr><td class='num'>t = {t:.2f}</td><td>{load_txt}</td>"
                         f"<td class='num'>{s['max_tissue_displacement_mm']:.2f}</td>"
@@ -100,6 +106,20 @@ def main():
         cls = "bad"
         pull = (f"The pull-out step did not complete: the run is {state} at t = {last:.3f} "
                 f"(t = 1 is the end of tightening). {st.get('note', '')}").strip()
+    lbf = T / 4.4482216
+    basis = load["tension"].get("basis", "example")
+    tension_text = f"{lbf:.0f} lbf ({T:.0f} N), the {basis} line tension"
+    lc2 = cfg["load_cases"]
+    if lc2.get("body_weight", {}).get("enabled"):
+        case2 = f"pushes the socket {lc2['body_weight']['displacement']:g}&nbsp;mm up onto the limb to test how much body weight it can hold"
+    elif lc2.get("pullout", {}).get("enabled"):
+        case2 = f"tries to pull the socket {lc2['pullout']['displacement']:g}&nbsp;mm off the limb"
+    else:
+        case2 = "holds"
+    sock = cfg.get("socket", {})
+    socket_note = ("The socket comes from the LOTUS V5 CAD, used tentatively (petals, pads, hinge axles, cup); the cushion is parametric."
+                   if sock.get("cad") else "The socket is a parametric stand-in for the LOTUS design.")
+    socket_note += f" The lace tension is the {basis} value ({lbf:.0f} lbf); the RevoFit is rated to 200 lbf."
     fb = [v["residual_over_cable"] for v in (s1.get("petal_free_body") or {}).values()]
     vals = dict(
         febio_version=html.escape(str(man["solver"].get("version"))),
@@ -113,6 +133,7 @@ def main():
         pullout_note=html.escape(pull),
         distortion_note=_distortion(run, summ),
         run_id=html.escape(man["run_id"]),
+        tension_text=tension_text, tension_short=f"{lbf:.0f} lbf", case2_text=case2, socket_note=html.escape(socket_note),
         commit=html.escape(str(man.get("repository", {}).get("commit", "?"))[:10]),
         generated=dt.date.today().isoformat())
     tpl = string.Template(open(os.path.join(HERE, "site_template.html")).read())

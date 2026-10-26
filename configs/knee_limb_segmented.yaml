@@ -106,11 +106,13 @@ contact:
   friction: 0.5
   augmented_lagrangian: false
   penalty_scale: 0.1
+tension_basis: design
 cable:
-  strand_tension:
-    value: 75
-    unit: N
-  tension_is_example: true
+  strand_tension:          # design line tension (docs/GRIP_ESTIMATE.md); replaces the earlier 75 N placeholder
+    value: 60
+    unit: lbf
+  design_source: "docs/GRIP_ESTIMATE.md (walking stance peak x 1.3 headroom, petals >= 85%)"
+  tension_is_example: false
   rated_tension: null
   rating_fractions:
   - 0.25

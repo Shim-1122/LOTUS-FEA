@@ -70,7 +70,7 @@ a{color:var(--accent)}
   <header>
     <span class="kicker">Senior design &middot; nighttime transtibial prosthesis &middot; FEBio $febio_version</span>
     <h1>LOTUS FEA</h1>
-    <p class="lead">This is a full finite element model of a below-knee residual limb, with skin, fat, muscle and four bones, squeezed by the four-petal LOTUS socket (V5 CAD, used tentatively), with the lace running through the hollow tubes in the petals. The run below tightens the lace to the 75 N example tension, then tries to pull the socket 2&nbsp;mm off the limb. <span class="pill $state_class">$state_label</span></p>
+    <p class="lead">This is a full finite element model of a below-knee residual limb, with skin, fat, muscle and four bones, squeezed by the four-petal LOTUS socket (V5 CAD, used tentatively), with the lace running through the hollow tubes in the petals. The run below tightens the lace to $tension_text, then $case2_text. <span class="pill $state_class">$state_label</span></p>
     <div class="links">
       <a class="btn" href="viewer.html">Open the 3D viewer</a>
       <a class="btn alt" href="report.pdf">Full run report (PDF)</a>
@@ -79,7 +79,7 @@ a{color:var(--accent)}
   </header>
 
   <section>
-    <h2>At the 75 N example lace tension</h2>
+    <h2>At full lace tension ($tension_short)</h2>
     <div class="stats">$stats</div>
     <p class="muted" style="margin-top:10px">These are numbers from one model. They are not clinical limits or injury thresholds. Peak contact pressure depends on the mesh, and the penalty contact method underestimates it; see the limitations below.</p>
   </section>
@@ -122,9 +122,9 @@ a{color:var(--accent)}
       <h2>What it does not tell us</h2>
       <ul>
         <li>No clinical validation has been done, so a converged run does not show grip, comfort or safety.</li>
-        <li>The bone labels (tibia, femur, patella, fibula) are heuristic, and nobody has verified where the segmentation came from.</li>
-        <li>The socket is a parametric stand-in, and 75&nbsp;N is an example tension, not a RevoFit rating.</li>
-        <li>Silicone, cushion and TPU properties are assumptions. Tissue stiffness is the largest single uncertainty: in the synthetic sensitivity study, doubling or halving it changed peak displacement by &minus;31% or +47%.</li>
+        <li>The limb is CAD built from approximations of an MRI scan; the bone labels (tibia, femur, patella, fibula) are heuristic.</li>
+        <li>$socket_note</li>
+        <li>Silicone and cushion properties are literature approximations (gel-liner silicone; 85A TPU with 8% gyroid infill), not tests of the actual parts. Tissue stiffness is the largest single uncertainty: in the synthetic sensitivity study, doubling or halving it changed peak displacement by &minus;31% or +47%.</li>
         <li>$pullout_note</li>
         $distortion_note
       </ul>

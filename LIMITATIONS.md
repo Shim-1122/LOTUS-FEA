@@ -37,7 +37,9 @@ represents the real limb). No validation has been performed.
   hinges, a distal cup and a cushion. The Anclote suction puck, the plate and
   the Bulldog adapter are treated only as the rigid support of the cup.
 * Lace routing is a provisional single-row circumferential lace unless an
-  explicit routing is configured. The 75 N strand tension is an **example**.
+  explicit routing is configured; the LOTUS V5 configs route through the CAD tubes. The
+  line tension is the 60 lbf **design** value from `docs/GRIP_ESTIMATE.md`, an
+  estimate (the earlier 75 N value was a placeholder and is retired).
   No RevoFit rating has been verified, so no rated-percentage cases are run.
 * Cable span forces act on rigid petals as fixed-direction resultants. They
   do not follow petal rotation.

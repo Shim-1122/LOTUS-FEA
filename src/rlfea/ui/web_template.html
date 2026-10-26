@@ -96,7 +96,7 @@ const st=$("state"); st.textContent=D.state; st.className="pill "+(D.state==="co
 $("sub").textContent=`FEBio ${D.febio} · run ${D.run_id}`+(D.state!=="converged"?` · last accepted time ${D.last_converged_time}`:"")+` · friction ${D.friction}`;
 const notes=["Every colour is an actual FEBio output at the selected output time. Nodal displacements are drawn at the nodes; contact quantities are drawn flat per facet with no smoothing.",
  "Peak contact pressures change with mesh density and are not injury predictions. Contact traction and stick/slip are FEBio's own contact quantities (Lagrange multipliers and stick flag from the plot file).",
- "Numerical verification only. The socket is a provisional parametric model and the 75 N lace tension is an example, not a RevoFit rating."].concat(D.warnings.slice(0,4));
+ "Numerical results only; not clinically validated."].concat(D.warnings.slice(0,4));
 $("notes").innerHTML=notes.map(n=>`<li>${n.replace(/</g,"&lt;")}</li>`).join("");
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const view=$("view"); const renderer=new THREE.WebGLRenderer({antialias:true}); view.prepend(renderer.domElement);

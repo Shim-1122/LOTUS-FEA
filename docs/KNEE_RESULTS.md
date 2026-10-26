@@ -1,5 +1,8 @@
 # Results
 
+> **Superseded tension.** The runs recorded in this file used a 75 N line tension. That value was a placeholder based on incomplete data, and the team has retired it. Current runs use the 60 lbf (267 N) design tension from [GRIP_ESTIMATE.md](GRIP_ESTIMATE.md). These results are kept as a record.
+
+
 ## LOTUS V5 CAD socket (`configs/lotus_v5_socket.yaml`, run `lotus_v5_tubes_T75`)
 
 The socket comes from the LOTUS V5 (closed) CAD, used tentatively: petals,

@@ -1,5 +1,8 @@
 # Results status (generated)
 
+> **Superseded tension.** The runs recorded in this file used a 75 N line tension. That value was a placeholder based on incomplete data, and the team has retired it. Current runs use the 60 lbf (267 N) design tension from [GRIP_ESTIMATE.md](GRIP_ESTIMATE.md). These results are kept as a record.
+
+
 All numbers below are NUMERICAL results for the SYNTHETIC limb and a PROVISIONAL socket, with the 75 N EXAMPLE strand tension.
 They are not clinical predictions, and they say nothing about grip or tissue safety.
 

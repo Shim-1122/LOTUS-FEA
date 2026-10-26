@@ -72,7 +72,8 @@ Alternatively, run `docker build -t lotus-fea .` for a complete pinned environme
 ```bash
 rlfea capabilities                                  # FEBio found? every required feature exercised
 rlfea verify --out verification_runs                # analytical / independent-reference benchmarks
-rlfea run configs/knee_limb_segmented.yaml --runs runs  # segmented limb: tightening (75 N example) + pull-out
+rlfea run configs/lotus_v5_stance.yaml --runs runs      # V5 socket: lace to 60 lbf, then stance push (grip check)
+rlfea run configs/knee_limb_segmented.yaml --runs runs  # parametric socket: lace to 60 lbf + pull-out
 rlfea run configs/synthetic_human.yaml --runs runs  # synthetic full limb: same load case
 rlfea status runs/<run_id>                          # prepared | running | converged | failed | interrupted
 rlfea post runs/<run_id>                            # re-derive fields, VTK, figures, report from raw output

@@ -322,7 +322,8 @@ def _assemble(cfg, model, mset, traction_model=None):
     T_example = cb.get("strand_tension")
     T_rated = cb.get("rated_tension_N")
     T_apply = T_rated if (cfg.get("tension_basis") == "rated" and T_rated) else T_example
-    rep["tension"] = {"applied_N": T_apply, "basis": "rated" if T_apply == T_rated and T_rated else "example",
+    rep["tension"] = {"applied_N": T_apply, "basis": ("rated" if T_apply == T_rated and T_rated else
+                                                      "design" if cfg.get("tension_basis") == "design" else "example"),
                       "example_N": T_example, "rated_N": T_rated,
                       "levels_N": [f * T_apply for f in cb["rating_fractions"]] if T_apply else []}
     if S.get("enabled") and T_apply:
