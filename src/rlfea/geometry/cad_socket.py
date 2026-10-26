@@ -161,9 +161,10 @@ def _tube_rows(petal_mesh, thc_deg, zmin, zmax, dz=0.25, min_frac=0.6):
 
 def _cad_lace_route(parts, petals, names, closing, rep):
     """Lace through the hollow tubes in the petals (CAD).  One strand from the
-    dial on the first petal; each tube row is a loop dial -> around -> dial.
-    A row missing on a petal is passed OUTSIDE that petal (frictionless
-    contact with its outer surface at the row height): an assumption."""
+    dial on the first petal runs through the lower tubes of every petal, then
+    crosses into the upper tubes and returns to the dial.  A row missing on a
+    petal is passed OUTSIDE that petal (frictionless contact with its outer
+    surface at the row height)."""
     def P(th, r, z):
         return np.array([r * np.cos(th), r * np.sin(th), z])
     tubes = {}
@@ -182,42 +183,41 @@ def _cad_lace_route(parts, petals, names, closing, rep):
     dial_xyz = P(np.deg2rad(dial.theta_center_deg), h0[-1] if h0 else 70.0, z_dial)
     from ..loads.cable import RoutePoint
     route, info = [], {"rows_z_mm": rows, "petals": {}}
+
+    def openings(p, ri, zr):
+        t = [x for x in tubes[p.name] if abs(x["z"] - zr) <= 3]
+        if t:
+            t = t[0]
+            info["petals"].setdefault(p.name, {})[f"row{ri + 1}"] = "tube"
+            return P(t["open_cw"][0], t["open_cw"][1], t["z"]), P(t["open_ccw"][0], t["open_ccw"][1], t["z"])
+        # no tube at this height: the strand passes over the petal's outer surface
+        m = _tm(parts, [f"{names[petals.index(p)]}_anatomical_petal"])
+        th = np.deg2rad(p.theta_center_deg + np.linspace(-70, 70, 281))
+        H = _ray_hits(m, zr, th)
+        k2 = [i for i, h in enumerate(H) if len(h) >= 2]
+        info["petals"].setdefault(p.name, {})[f"row{ri + 1}"] = "outside (no tube)"
+        return P(th[k2[0]], H[k2[0]][-1] + 1.0, zr), P(th[k2[-1]], H[k2[-1]][-1] + 1.0, zr)
+
+    # RevoFit path (Shyam, 2026-10-26): one strand leaves the dial, runs through the LOWER
+    # tubes of every petal first, then crosses up into the UPPER tubes and returns to the
+    # dial.  The petal without an upper tube is passed on the outside (by design).
+    route.append(RoutePoint(dial.name, dial_xyz, "dial:out"))
     for ri, zr in enumerate(rows):
-        route.append(RoutePoint(dial.name, dial_xyz + np.array([0, 0, 1e-3 * ri]), f"dial:row{ri + 1}_out"))
-        for k in range(len(petals) + 1):
-            p = petals[k % len(petals)]
-            t = [x for x in tubes[p.name] if abs(x["z"] - zr) <= 3]
-            first, last = k == 0, k == len(petals)
-            if t:
-                t = t[0]
-                cw, ccw = P(t["open_cw"][0], t["open_cw"][1], t["z"]), P(t["open_ccw"][0], t["open_ccw"][1], t["z"])
-                kind = "tube"
-            else:
-                tt = [x for x in tubes[p.name]][0] if tubes[p.name] else None
-                # no tube at this height: lace passes over the petal's outer surface
-                m = _tm(parts, [f"{names[petals.index(p)]}_anatomical_petal"])
-                th = np.deg2rad(p.theta_center_deg + np.linspace(-70, 70, 281))
-                H = _ray_hits(m, zr, th)
-                k2 = [i for i, h in enumerate(H) if len(h) >= 2]
-                cw, ccw = P(th[k2[0]], H[k2[0]][-1] + 1.0, zr), P(th[k2[-1]], H[k2[-1]][-1] + 1.0, zr)
-                kind = "outside (no tube)"
-            info["petals"].setdefault(p.name, {})[f"row{ri + 1}"] = kind
-            if first:
-                route.append(RoutePoint(p.name, ccw, f"{p.name}:row{ri + 1}_ccw"))
-            elif last:
+        for k, p in enumerate(petals):
+            cw, ccw = openings(p, ri, zr)
+            if not (ri == 0 and k == 0):                    # the dial feeds the first lower tube directly
                 route.append(RoutePoint(p.name, cw, f"{p.name}:row{ri + 1}_cw"))
-            else:
-                route.append(RoutePoint(p.name, cw, f"{p.name}:row{ri + 1}_cw"))
-                route.append(RoutePoint(p.name, ccw, f"{p.name}:row{ri + 1}_ccw"))
-        route.append(RoutePoint(dial.name, dial_xyz + np.array([0, 0, 1e-3 * ri + 5e-4]), f"dial:row{ri + 1}_in"))
+            route.append(RoutePoint(p.name, ccw, f"{p.name}:row{ri + 1}_ccw"))
+    route.append(RoutePoint(dial.name, dial_xyz + np.array([0, 0, 1e-3]), "dial:in"))
     # move the route points with each petal's closing rotation
     for q in route:
         o, a, ang = closing.get(q.body, (None, None, 0.0))
         if ang:
             q.xyz = _rotate_about(q.xyz[None], o, a, ang)[0]
     info["n_points"] = len(route)
-    info["note"] = ("lace through the CAD hollow tubes; one strand from the dial on the "
-                    f"{names[0]} petal, one loop per tube row; frictionless tubes")
+    info["note"] = ("one strand from the dial on the " f"{names[0]} petal through the lower tubes of every petal, "
+                    "then crossing up through the upper tubes and back to the dial; frictionless tubes; a petal "
+                    "without a tube at a row is passed on its outer surface")
     rep["lace_route"] = info
     return route
 
