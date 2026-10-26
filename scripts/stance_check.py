@@ -6,7 +6,7 @@ proximally (cup rigid displacement +z) and reports, per output time:
   * the share carried by the distal end (cushion zone contact, axial part),
   * the share carried by the petals (petal-zone contact, axial part),
   * slip area fraction and peak contact pressure,
-then interpolates the state at the target load (default 2 x 923 N) and
+then interpolates the state at the target load (default 1.3 x 923 N) and
 checks the design requirements:
   * the target load is reached (the grip holds it),
   * distal share < 15 %,
@@ -26,7 +26,7 @@ import numpy as np
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("run")
-    ap.add_argument("--target", type=float, default=1846.0, help="axial load to hold, N (2 x stance peak)")
+    ap.add_argument("--target", type=float, default=1200.0, help="axial load to hold, N (1.3 x 923 N stance peak)")
     ap.add_argument("--distal-max", type=float, default=0.15)
     ap.add_argument("--push-mm", type=float, default=None, help="step-2 cup displacement (default: from config)")
     ap.add_argument("--out", default=None)

@@ -21,6 +21,7 @@ Patient: 50 years old, 175 cm (5'9"), 81.6 kg (180 lb) before amputation.
 |---|---|---|
 | Stance, peak (loading response / push-off) | axial, pushes the limb INTO the socket | 1.2 × 781 N − prosthesis weight ≈ **923 N (207 lbf)** |
 | Late swing | axial, pulls the socket OFF the limb | 1.5 kg × (g + ω²r) = 1.5 × (9.81 + 6.5² × 0.30) ≈ **34 N (8 lbf)** |
+| Sit-to-stand, peak | mostly axial, into the socket, with the knee flexed | ~0.6 × 781 N ≈ **470 N (105 lbf)**; amputees usually favour the intact leg, so the prosthetic side is often lower |
 
 * **Stance.** 1.2 BW is a conservative peak vertical ground reaction force
   for level walking (the prosthetic side is usually somewhat lower).
@@ -31,9 +32,12 @@ Patient: 50 years old, 175 cm (5'9"), 81.6 kg (180 lb) before amputation.
   requirement, 2026-10-26). The petals therefore have to carry at least 85%
   of the stance load through friction and the socket's taper. **Stance, not
   swing, is the case that drives the design.**
-* **Design target at 2 × the requirement:** about **1.85 kN** axial in
-  stance, of which the petals carry at least **1.57 kN**, and **70 N**
-  pull-out in swing.
+* **Governing load:** the walking stance peak (923 N). It is about twice
+  the sit-to-stand peak and about 27 times the swing pull-out.
+* **Design target (team, 2026-10-26):** "a bit of headroom" over the
+  largest load in gait and sit-to-stand, taken here as **1.3 ×**. That gives
+  **1.2 kN** axial, of which the petals carry at least **1.02 kN**. (The
+  earlier 2 × target, 1.85 kN, is kept below for comparison.)
 
 ## Lace tension that would provide it (friction-only estimate)
 
@@ -45,12 +49,13 @@ would be μ × ΣN ≈ μ × 8.1 × T.
 
 Petals carry 85% of the stance load and the distal end carries 15%:
 
-| Skin-silicone friction μ | T for 1 × (petals 784 N) | T for 2 × (petals 1.57 kN) |
-|---|---|---|
-| 0.5 (model default) | 194 N (44 lbf) | **387 N (87 lbf)** |
-| 0.8 | 121 N (27 lbf) | 242 N (54 lbf) |
+| Skin-silicone friction μ | T for 1 × (petals 784 N) | **T for 1.3 × (petals 1.02 kN)** | T for 2 × (petals 1.57 kN) |
+|---|---|---|---|
+| 0.5 (model default) | 194 N (44 lbf) | **252 N (57 lbf)** | 387 N (87 lbf) |
+| 0.8 | 121 N (27 lbf) | 157 N (35 lbf) | 242 N (54 lbf) |
 
-The 2 × target needs about 54 to 87 lbf of line tension. That is within
+The 1.3 × target needs about 35 to 57 lbf of line tension. The FE stance
+run uses **60 lbf** (`configs/lotus_v5_stance.yaml`). That is within
 the 200 lbf RevoFit rating, and well within the roughly 300 lbf the team
 reports from independent testing. Swing needs only about 2 to 4 lbf, so it
 never governs.
@@ -60,13 +65,13 @@ never governs.
 * **Estimate, not proof.** Friction-only capacity ignores the socket taper,
   which helps in stance and makes this estimate conservative. It also
   assumes the whole interface slides at once.
-* **Pressure check.** Scaling the 75 N result linearly, 387 N of line
-  tension gives a peak pad pressure of about 1.0 MPa (196 kPa × 5.2). That
+* **Pressure check.** Scaling the 75 N result linearly, 60 lbf (267 N)
+  of line tension gives a peak pad pressure of about 0.7 MPa (196 kPa × 3.6). That
   is far above the 75 N run and likely uncomfortable, especially at the
   pad edge where the model already crushes muscle at 75 N. The real
   tissue response is nonlinear, so this must be checked in the FE model
   before choosing a tension.
 * **Next steps.** Weigh the device, measure skin-silicone friction, and run
-  the FE model at the proposed tension with a force-controlled 1.85 kN
-  body-weight case, and check that the distal contact stays below 15% of
+  the FE model at the proposed tension with a stance push to 1.2 kN
+  (`scripts/stance_check.py`), and check that the distal contact stays below 15% of
   the load.
