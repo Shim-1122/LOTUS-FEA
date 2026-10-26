@@ -40,7 +40,15 @@ represents the real limb). No validation has been performed.
   explicit routing is configured; the LOTUS V5 configs route through the CAD tubes. The
   line tension is the 60 lbf **design** value from `docs/GRIP_ESTIMATE.md`, an
   estimate (the earlier 75 N value was a placeholder and is retired).
-  No RevoFit rating has been verified, so no rated-percentage cases are run.
+  The RevoFit rating (200 lbf line tension; about 300 lbf in the team's
+  independent testing) is as stated by the team; no manufacturer document
+  has been checked, so no rated-percentage cases are run.
+* The silicone pads are bonded to a rigid nylon backing (they share nodes
+  with the rigid petal shell), so they deform only through their thickness
+  and at free edges. Any flex of the real backing is ignored.
+* The fibular relief in `configs/lotus_v5_stance_relief.yaml` is an
+  approximation traced from a sketch (16 mm deep, posterior side of the
+  lateral petal assumed), not the final CAD cut.
 * Cable span forces act on rigid petals as fixed-direction resultants. They
   do not follow petal rotation.
 * Each petal has a small radial stabiliser spring (default 0.05 N/mm). It is
@@ -57,7 +65,9 @@ represents the real limb). No validation has been performed.
   the same ratio used for fat and muscle.
 * Fat and muscle use Ogden fits from inverse FE of in-vivo indentation of a
   single transtibial residuum (Sengeh 2016). The fat layer uses that study's
-  combined skin-adipose parameters.
+  combined skin-adipose parameters. Muscle is treated as incompressible
+  (constant volume, free to change shape) by a penalty bulk modulus, so a
+  small residual volume change remains; see the README check.
 * The silicone pads stand in for medical-grade gel-liner silicone. They use
   a neo-Hookean model with shear modulus 23 kPa, the median of five
   silicone-gel liner products in Sanders 2004 (range 19 to 53 kPa). This is

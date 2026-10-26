@@ -121,6 +121,145 @@ quantity carries an explicit unit. The limb frame puts the long axis along
 +z (proximal), +y anterior, and the distal skin apex at z = 0. The transform
 from the source frame is logged.
 
+## LOTUS V5 model: assumptions and test parameters
+
+This section collects every assumption the current LOTUS V5 runs rest on,
+and the parameters of each test. Values marked *estimate* or
+*approximation* should be replaced by measurements when they exist.
+
+### Patient and loads
+
+| Item | Value | Basis |
+|---|---|---|
+| Patient | 50 years, 175 cm (5'9"), 81.6 kg (180 lb) before amputation | team |
+| Body mass after amputation | 78.1 kg (3.5 kg lost with the limb) | Winter segment fractions (estimate) |
+| Prosthesis mass | 1.5 kg | **assumed**; weigh the device |
+| Walking stance peak (governing load) | 923 N (207 lbf) into the socket | 1.2 × body weight − prosthesis weight (estimate) |
+| Sit-to-stand peak | about 470 N | about 0.6 × body weight (estimate) |
+| Swing pull-out | about 34 N | 1.5 kg at 6.5 rad/s, 0.30 m from the knee (estimate) |
+| Design target | **1.2 kN** axial (1.3 × the stance peak, "a bit of headroom") | team requirement |
+| Distal end share | carries load, but **less than 15%** of it | team requirement |
+| Petal share | therefore at least 85% (at least 1.02 kN) | follows from the above |
+
+The derivation is in [docs/GRIP_ESTIMATE.md](docs/GRIP_ESTIMATE.md).
+
+### Lace (RevoFit)
+
+* **Design tension: 60 lbf (267 N)** per strand. A friction-only estimate
+  gives 35 to 57 lbf for the 1.2 kN target (skin-silicone friction 0.8 to
+  0.5). The earlier 75 N value was a placeholder from incomplete data and
+  is retired.
+* **Rating:** 200 lbf line tension, as stated by the team; about 300 lbf
+  reliably in the team's independent testing. 60 lbf is 30% of the rating.
+* **Routing** (from the team's sketch): the strand leaves the dial on the
+  anterior petal, runs through the **lower** tubes of all four petals, then
+  crosses into the **upper** tubes (anterior, medial, posterior). The
+  lateral petal has no upper tube by design, so the strand passes over its
+  outer surface back to the dial. Tubes are modelled as frictionless guide
+  points, and span forces act as fixed-direction resultants on the rigid
+  petals.
+
+### Socket geometry (LOTUS V5 CAD, used tentatively)
+
+* Source: `LOTUS_V5_Closed (4).step`, all parts in mm. The STEP file is not
+  published (`data/socket/` is git-ignored).
+* **Four petals:** anterior (carries the dial), medial, posterior, lateral.
+  Petals and hinge axles are rigid; each petal rotates about its own hinge
+  axis, taken from the axle's principal axis.
+* **Pose:** fitted automatically (`scripts/fit_socket_pose.py`). Each petal
+  is then closed about its hinge until the 20th percentile of its pad nodes
+  is 0.1 mm into the skin, so contact starts snug.
+* **Silicone pads** (about 2.7 to 3 mm thick) are backed by **rigid nylon**:
+  each pad's back face shares nodes with its rigid petal shell, so the pad
+  can only compress through its thickness (and bulge at its free edges); it
+  cannot stretch or slide relative to the petal.
+* **Distal cup** wall from the CAD cavity (rigid); any cup point that started
+  inside the skin is moved out to 0.1 mm clearance.
+* **Distal cushion** (not in the CAD): a parametric 6 mm layer under the
+  distal 8 mm of skin.
+* **Fibular relief (approximate, under test):** a transverse scallop off the
+  lateral petal's top edge, traced from the team's swept-profile sketch. It
+  lowers the top edge by 16 mm over the posterior 45% of the petal's width,
+  then ramps back to full height over the next 25% (cosine ramp). The pad
+  follows the new edge. Set in `socket.cad.trims`
+  (`configs/lotus_v5_stance_relief.yaml`). The cut side is assumed to be
+  posterior, because the fibular head is posterolateral.
+
+### Limb and tissues
+
+* Limb geometry: the team's CAD, designed from MRI-based approximations
+  (`data/limb/`). Bone labels (tibia, fibula, femur, patella) are heuristic.
+* Skin and fat thickness are measured at each skin vertex from the
+  segmented inner surfaces; muscle fills the space to the bones.
+* Bones are rigid and fixed (patella free); the proximal cut is an axial
+  roller.
+* Skin: HGO, Ni Annaidh 2012. Fat: Ogden, Sengeh 2016. Bulk modulus of
+  skin and fat: 100 × shear modulus (near-incompressible, approximation).
+* **Muscle is incompressible: its volume does not change under
+  compression, but it still deforms freely in shape.** Its shear response
+  is unchanged (Ogden, Sengeh 2016, shear modulus 5.2 kPa). Volume is held
+  constant with FEBio's penalty method: bulk modulus **5.2 MPa** (1000 ×
+  shear, Poisson ratio 0.4995), on UT4 nodally integrated tetrahedra, which do not lock at this
+  ratio. See *Muscle incompressibility check* below.
+* Silicone pad: neo-Hookean, shear modulus 23.3 kPa (median of silicone-gel
+  liners, Sanders 2004), near-incompressible (k = 100 × shear).
+* Distal cushion: 85A TPU, 2 walls plus 8% gyroid infill, homogenised as a
+  compressible neo-Hookean solid, E = 71 kPa (range 36 to 252 kPa),
+  Poisson ratio 0.3.
+
+### Contact and solver
+
+* Contact: FEBio `sliding-elastic`, penalty method (scale 0.1 of auto
+  penalty), Coulomb friction μ = 0.5 between skin and silicone (screening
+  value, not measured).
+* Static, quasi-static loading; adaptive time stepping, full Newton
+  (`max_ups: 0`), energy tolerance 0.01, up to 10 retries per step.
+
+### Tests
+
+| Config | Step 1 | Step 2 | Mesh (skin / bone size) | Purpose |
+|---|---|---|---|---|
+| `lotus_v5_stance.yaml` | lace to 60 lbf | push the socket 10 mm onto the limb (displacement control) | 7 / 3.5 mm | grip at the design tension |
+| `lotus_v5_stance_relief.yaml` | lace to 60 lbf | same 10 mm push | 9 / 6 mm | the same, with the approximate fibular relief |
+| `lotus_v5_stance_25lbf.yaml` | lace to 25 lbf | same 10 mm push | 9 / 6 mm | grip per lbf of lace (scaling) |
+| `lotus_v5_socket.yaml` | lace to 60 lbf | 2 mm pull-out | 9 / 6 mm | swing pull-out check |
+
+`scripts/stance_check.py RUN_DIR` reads a stance run and reports, against
+the requirements:
+
+* whether the socket carries **1.2 kN** axially before the run ends, and
+  after how much push;
+* the **distal share** of the axial load at 1.2 kN (pass if below 15%);
+* the petal load, slip area fraction, peak contact pressure and minimum
+  volume ratio J (tissue inversion check).
+
+Displacement control is used instead of force control so that a socket
+that slips still yields a load-displacement curve and the slip load.
+
+### Muscle incompressibility check
+
+A 20 mm cube of the muscle material, on the same UT4 tetrahedra as the limb,
+is held at its sides and base and indented 5 mm (25%) by a 10 × 10 mm
+indenter, so it can keep its volume only by flowing up around the
+indenter. Run `python scripts/muscle_incompressibility_check.py`:
+
+| Bulk modulus / shear | Bulk modulus (MPa) | Poisson ratio | Volume change at full indent |
+|---|---|---|---|
+| 100 (previous setting, Sengeh 2016) | 0.52 | 0.4950 | −1.71% |
+| **1000 (current)** | **5.2** | **0.4995** | **−0.42%** |
+| 10 000 | 52 | 0.5000 | −0.36% |
+
+Going from 1000 to 10 000 hardly changes the result, so the remaining
+0.4% is mesh discretisation rather than material compressibility. A
+higher ratio would only make the solver stiffer. The shape response is
+unchanged: the shear parameters are the same in every row.
+
+Under the lateral pad's top edge, the earlier 75 N run (bulk = 100 × shear)
+showed muscle elements compressed to 41% of their volume. With the
+incompressible setting that tissue has to move aside instead of
+compacting. The stance runs are being repeated with this setting; runs
+made before the change are kept with the suffix `_k100`.
+
 ## Materials (Scenario A: human tissue; Scenario B: prototype)
 
 Both sets are in `configs/materials/`. Each lists every parameter with its
@@ -140,8 +279,10 @@ your infill.
   ends with the span tension. Optional capstan guide friction can be applied.
   Per-petal resultant force and moment go to the rigid petals. Sum checks are
   run (the lace is an internal load, so the sums must be zero).
-* `cable.strand_tension` is an **example** value. Rated 25/50/75/100% cases
-  require `cable.rated_tension: {value, unit, source, meaning: strand_tension}`
+* `cable.strand_tension` is an **example** value unless `tension_basis` says
+  otherwise. `tension_basis: design` (used by the LOTUS V5 configs) requires
+  `cable.design_source`. Rated 25/50/75/100% cases require
+  `cable.rated_tension: {value, unit, source, meaning: strand_tension}`
   and `tension_basis: rated`.
 * Contact is `sliding-elastic`: finite sliding, separation, compression only
   and Coulomb friction. Bonded interfaces only happen with `contact.bonded: true`.

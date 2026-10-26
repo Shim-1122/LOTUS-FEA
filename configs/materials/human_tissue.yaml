@@ -32,6 +32,10 @@ references:
     citation: "Approximation: human soft-tissue bulk modulus taken as 100 x shear modulus, the same near-incompressibility ratio Sengeh et al. 2016 used for fat and muscle."
     doi: "10.1016/j.jmbbm.2016.02.020"
     kind: approximation
+  MuscleIncompressibleApprox:
+    citation: "Approximation (team requirement, 2026-10-26): skeletal muscle is mostly water and is treated as incompressible, so its volume must not change under compression while it still deforms in shape. Enforced by a penalty bulk modulus of 1000 x the Sengeh 2016 shear modulus on UT4 (nodally integrated) tetrahedra; FEBio 4.13 offers no augmented-Lagrangian incompressibility option for the uncoupled Ogden material."
+    doi: null
+    kind: approximation
   PriorPackageAssumption:
     citation: "Supplied handoff package 03_Previous_Tissue_Analysis (silicone mu = 100 kPa listed as an assumed material; no measurement)."
     doi: null
@@ -74,7 +78,7 @@ materials:
       m1: {value: 4.78,    unit: "-", source: Sengeh2016}
       c2: {value: 0.00520, unit: MPa, source: Sengeh2016}
       m2: {value: -4.78,   unit: "-", source: Sengeh2016}
-      k:  {value: 0.520,   unit: MPa, source: Sengeh2016}
+      k:  {value: 5.20,    unit: MPa, source: MuscleIncompressibleApprox, note: "muscle is treated as incompressible (constant volume, free to change shape): penalty bulk modulus k = 1000 c (nu = 0.4995). Shear response (c1, m1, c2, m2) is unchanged from Sengeh 2016, whose own fit used k = 100 c. README 'Muscle incompressibility check': scripts/muscle_incompressibility_check.py: total volume change -0.42% at 1000 c vs -1.71% at 100 c in a confined 25% indentation; 10000 c gives -0.36%, so the residual is mesh discretisation, not material compressibility."}
     calibration_range: "In-vivo indentation inverse FE, muscle-soft tissue complex (includes tendon), relaxed muscle, single subject."
     uncertainty:
       c1: [0.0026, 0.0104]
