@@ -40,8 +40,8 @@ represents the real limb). No validation has been performed.
   explicit routing is configured; the LOTUS V5 configs route through the CAD tubes. The
   line tension is the 60 lbf **design** value from `docs/GRIP_ESTIMATE.md`, an
   estimate (the earlier 75 N value was a placeholder and is retired).
-  The RevoFit rating (200 lbf line tension; about 300 lbf in the team's
-  independent testing) is as stated by the team; no manufacturer document
+  The RevoFit rating (200 lbf line tension; about 300 lbf in external
+  third-party testing) is as reported by the team; no manufacturer document
   has been checked, so no rated-percentage cases are run.
 * The silicone pads are bonded to a rigid nylon backing (they share nodes
   with the rigid petal shell), so they deform only through their thickness

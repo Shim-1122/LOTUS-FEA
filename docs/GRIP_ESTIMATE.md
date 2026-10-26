@@ -56,8 +56,8 @@ Petals carry 85% of the stance load and the distal end carries 15%:
 
 The 1.3 × target needs about 35 to 57 lbf of line tension. The FE stance
 run uses **60 lbf** (`configs/lotus_v5_stance.yaml`). That is within
-the 200 lbf RevoFit rating, and well within the roughly 300 lbf the team
-reports from independent testing. Swing needs only about 2 to 4 lbf, so it
+the 200 lbf RevoFit rating, and well within the roughly 300 lbf shown in external
+(third-party) testing. Swing needs only about 2 to 4 lbf, so it
 never governs.
 
 ## Caveats

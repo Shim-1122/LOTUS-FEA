@@ -150,7 +150,7 @@ The derivation is in [docs/GRIP_ESTIMATE.md](docs/GRIP_ESTIMATE.md).
   0.5). The earlier 75 N value was a placeholder from incomplete data and
   is retired.
 * **Rating:** 200 lbf line tension, as stated by the team; about 300 lbf
-  reliably in the team's independent testing. 60 lbf is 30% of the rating.
+  reliably in external (third-party) testing, as reported by the team. 60 lbf is 30% of the rating.
 * **Routing** (from the team's sketch): the strand leaves the dial on the
   anterior petal, runs through the **lower** tubes of all four petals, then
   crosses into the **upper** tubes (anterior, medial, posterior). The
