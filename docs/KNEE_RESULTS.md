@@ -131,3 +131,28 @@ The run-to-run differences mix several changes at once (petal count, pad
 and cushion stiffness, anatomy), so none of them is attributed to a single
 cause. The softer gel pads are the most likely reason peak pressure
 roughly halved: they spread the load over a larger area.
+
+## Fibular relief check (`configs/lotus_v5_stance_relief.yaml`, run `lotus_v5_stance_60lbf_relief`)
+
+Approximate swept relief on the lateral petal (16 mm deep, posterior 45 mm flat, 25 mm ramp),
+incompressible muscle (k = 1000 c), 60 lbf design tension, coarse mesh.
+
+**State: FAILED during tightening at t = 0.545 (32.7 lbf of 60 lbf).** The push was not reached.
+
+* The relief worked where it was aimed: the muscle over the fibula is no longer the most
+  compressed tissue. The runs without relief failed at about 27 to 29 lbf with the minimum
+  muscle volume ratio J at 0.33 there.
+* At 30 lbf (t = 0.5, last saved state) the most compressed muscle is J = 0.63, in two places:
+  under the **uncut anterior end of the lateral petal's top edge** (theta 36 to 46 deg, z 131 to 135 mm)
+  and **deep over the anteromedial tibia** (theta 134 to 145 deg, r 29 to 35 mm, z 105 to 128 mm),
+  under the anterior edge of the medial petal.
+* The medial petal has the peak contact pressure, 513 kPa (penalty contact, about 4 mm
+  penetration, so this is approximate). Total pad normal force is 1177 N at 30 lbf.
+
+| Petal | Normal force at 30 lbf (N) | Peak pressure (kPa) |
+|---|---|---|
+| anterior | 287 | 148 |
+| medial | 310 | 513 |
+| posterior | 196 | 94 |
+| lateral | 351 | 303 |
+| cushion | 32 | 34 |
