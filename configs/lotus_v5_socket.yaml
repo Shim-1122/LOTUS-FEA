@@ -117,7 +117,11 @@ cable:
     value: 75
     unit: N
   tension_is_example: true
-  rated_tension: null
+  rated_tension:            # RevoFit line-tension rating, stated by the LOTUS team (2026-10-26);
+    value: 200              # the team also reports ~300 lbf reliably in independent testing
+    unit: lbf
+    source: "RevoFit rating as stated by the LOTUS team, 2026-10-26 (manufacturer document not attached)"
+    meaning: strand_tension
   rating_fractions:
   - 0.25
   - 0.5
