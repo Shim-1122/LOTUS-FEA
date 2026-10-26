@@ -16,5 +16,9 @@ data/private/
 private/
 runs/
 verification_runs/
+
+# socket CAD (not published) and its tessellation cache
+data/socket/
+.tess_*.pkl
 !examples/synthetic/*.stl
 !data/limb/*.stl

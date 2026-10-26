@@ -13,6 +13,8 @@ import hashlib
 import json
 import os
 
+import numpy as np
+
 import yaml
 
 from .units import quantity
@@ -117,6 +119,15 @@ def resolve(raw: dict) -> tuple[dict, list[str]]:
     if C.get("bonded"):
         warn.append("contact.bonded = true: tissue-socket interfaces are TIED by explicit user choice (no sliding/separation).")
     S = cfg.get("socket", {"enabled": False})
+    if S.get("enabled") and S.get("cad"):
+        cp = S["cad"]["path"]
+        S["cad"]["path"] = cp if os.path.isabs(cp) else os.path.normpath(os.path.join(base, cp))
+        if not os.path.exists(S["cad"]["path"]):
+            raise ConfigError(f"socket CAD file not found: {S['cad']['path']}")
+        if np.asarray(S["cad"].get("cad_to_model"), float).shape != (4, 4):
+            raise ConfigError("socket.cad.cad_to_model must be a 4x4 matrix")
+        warn.append(f"Socket petals, pads, hinge axles and cup wall come from CAD {os.path.basename(S['cad']['path'])} "
+                    "(used TENTATIVELY); the distal cushion and lace routing are still parametric.")
     if S.get("enabled"):
         for k in ("z_base", "z_top", "posterior_clearance_drop", "tip_drop", "pad_thickness", "shell_thickness",
                   "initial_gap", "element_size", "cushion_thickness", "cup_thickness", "contact_zone_margin"):
@@ -126,8 +137,9 @@ def resolve(raw: dict) -> tuple[dict, list[str]]:
             if k in S and isinstance(S[k], dict):
                 S[k] = quantity(S[k], "angle")
         S["stabilizer_k"] = quantity(S.get("stabilizer_k", {"value": 0.05, "unit": "N/mm"}), "stiffness")
-        warn.append("Socket geometry is a PROVISIONAL parametric model generated from configuration values; "
-                    "no verified current socket CAD was supplied (V6 excluded).")
+        if not S.get("cad"):
+            warn.append("Socket geometry is a PROVISIONAL parametric model generated from configuration values; "
+                        "no verified current socket CAD was supplied (V6 excluded).")
     cb = cfg["cable"]
     if "strand_tension" in cb:
         cb["strand_tension"] = quantity(cb["strand_tension"], "force")

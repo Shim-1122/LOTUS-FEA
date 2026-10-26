@@ -91,6 +91,12 @@ def prepare_geometry(cfg: dict) -> dict:
         bones = {k: R.transform(v, M, "same limb-frame transform as skin") for k, v in bones.items()}
         layers = {k: R.transform(v, M, "same limb-frame transform as skin") for k, v in layers.items()}
         out["frame_transform"] = M.tolist()
+    elif al.get("method") == "matrix":
+        M = np.asarray(al["source_to_model"], float)
+        skin = R.transform(skin, M, f"configured source->model transform ({al.get('reason', 'no reason given')})")
+        bones = {k: R.transform(v, M, "same configured transform as skin") for k, v in bones.items()}
+        layers = {k: R.transform(v, M, "same configured transform as skin") for k, v in layers.items()}
+        out["frame_transform"] = M.tolist()
     elif al.get("method") == "translate_apex":
         apex_z = skin.vertices[:, 2].min()
         M = np.eye(4); M[2, 3] = -apex_z
@@ -164,7 +170,12 @@ def build_case(cfg: dict, geo: dict) -> dict:
     mode = cfg.get("load_model", "resolved_contact")
     traction_model = None
     if S.get("enabled"):
-        if mode == "resolved_contact":
+        if mode == "resolved_contact" and S.get("cad"):
+            from .geometry.cad_socket import build_socket_from_cad, tessellate_step, transform_parts
+            parts = tessellate_step(S["cad"]["path"], float(S["cad"].get("tessellation_size", 3.0)))
+            parts = transform_parts(parts, np.asarray(S["cad"]["cad_to_model"], float))
+            model, sock_rep = build_socket_from_cad(model, geo["skin"], S, parts)
+        elif mode == "resolved_contact":
             model, sock_rep = build_socket(model, geo["skin"], S)
         elif mode == "prescribed_traction":
             probe = copy.deepcopy(model)
@@ -283,9 +294,11 @@ def _assemble(cfg, model, mset, traction_model=None):
                                   "its force and energy are reported.")
         ctype = "tied-elastic" if C.get("bonded") else C["type"]
         pairs = [(f"skin_{p.name}_zone", f"{p.name}_pad_contact", f"contact_{p.name}") for p in petals]
-        pairs.append(("skin_cushion_zone", "cushion_contact", "contact_cushion"))
+        if "cushion_contact" in model.surfaces:
+            pairs.append(("skin_cushion_zone", "cushion_contact", "contact_cushion"))
+        pairs += [tuple(x) for x in model.meta.get("extra_contact_pairs", [])]
         for prim, sec, name in pairs:
-            if len(model.surfaces[prim].conn) == 0:
+            if prim not in model.surfaces or sec not in model.surfaces or len(model.surfaces[prim].conn) == 0:
                 continue
             if ctype == "sliding-elastic":
                 params = {"laugon": "AUGLAG" if C["augmented_lagrangian"] else "PENALTY", "tolerance": 0.2, "gaptol": 0,
@@ -296,7 +309,7 @@ def _assemble(cfg, model, mset, traction_model=None):
             else:
                 params = {"laugon": "PENALTY", "tolerance": 0.2, "penalty": C["penalty_scale"], "auto_penalty": 1}
             spec.contacts.append({"type": ctype, "name": name, "primary": prim, "secondary": sec, "params": params})
-        spec.log_surfaces = [p for p, _, _ in pairs if len(model.surfaces[p].conn)]
+        spec.log_surfaces = [p for p, q, _ in pairs if p in model.surfaces and q in model.surfaces and len(model.surfaces[p].conn)]
         spec.log_rigid = True
         spec.log_connectors = True
         rep["contact"] = {"type": ctype, "friction": C["friction"], "enforcement": "augmented Lagrangian" if C["augmented_lagrangian"] else "penalty",
