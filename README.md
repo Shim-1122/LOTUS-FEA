@@ -175,11 +175,11 @@ The derivation is in [docs/GRIP_ESTIMATE.md](docs/GRIP_ESTIMATE.md).
   published (`data/socket/` is git-ignored).
 * **Four petals:** anterior (carries the dial), medial, posterior, lateral.
   Petals are **rigid solids on frictionless hinges** (axis from each axle's
-  principal axis) that **rotate at most 2° inward from their initial
-  position** (the simulation start, after the snug fit; team, 2026-10-26;
-  `socket.cad.rotation_limit`). The limit is a hinge stop: a rigid 30 mm
-  tab below each hinge (part of the petal) meets a stiff bumper fixed to
-  the cup when the petal has turned 2° inward.
+  principal axis) that **rotate at most 5° inward from their initial
+  position** (the simulation start, after the snug fit; team, 2026-10-26,
+  raised from 2°; `socket.cad.rotation_limit`). The limit is a hinge stop:
+  a rigid 30 mm tab below each hinge (part of the petal) meets a stiff
+  bumper fixed to the cup when the petal has turned 5° inward.
   Without the stop, the earlier runs turned the medial petal 11 to 14° and
   the lateral petal 2.5 to 5° inward at only 25 to 30 lbf, driving their top
   edges into the limb.
@@ -221,7 +221,14 @@ The derivation is in [docs/GRIP_ESTIMATE.md](docs/GRIP_ESTIMATE.md).
   7.4 to 11.7 kPa shear-wave-elastography range measured in transtibial
   residual limbs, Ranger et al. 2022), exponent 5 (Mukhina 2020). Muscle
   uncertainty range 7.4 to 16.2 kPa (relaxed to contracted, Steer et al.
-  2020). These are 1.3× (fat) and 1.8× (muscle) stiffer than before.
+  2020).
+* **Stiffness ×3 (team, 2026-10-26).** The LOTUS V5 configs multiply every
+  stress-type parameter of skin, fat and muscle by 3
+  (`materials.stiffness_scale`), bulk moduli included, so muscle stays
+  incompressible: muscle 28.5 kPa, fat 19.7 kPa, skin c = 0.60 MPa. This is
+  a team decision above the literature values listed here (it is about the
+  stiffness of tissue under socket compression, where shear-wave speed
+  roughly doubles, Ranger 2024).
 * **Muscle is incompressible: its volume does not change under
   compression, but it still deforms freely in shape.** Volume is held
   constant with FEBio's penalty method: bulk modulus **9.5 MPa** (1000 ×
@@ -397,10 +404,10 @@ sum non-zero; that difference is carried by the joints.
 
 **Petal kinematics.** Each petal is a rigid body on a frictionless revolute
 joint (its hinge axle). Inward rotation from the initial position is
-limited to $\varphi_{max}$ = 2° by a hinge stop: a rigid tab of length
+limited to $\varphi_{max}$ = 5° by a hinge stop: a rigid tab of length
 $L$ = 30 mm below the hinge swings outward by $\delta = L \sin\varphi$
 as the petal turns inward, and a stiff bumper on the cup sits at the gap
-$g = L \sin\varphi_{max}$ = 30 × sin 2° = **1.05 mm**. The tab-bumper contact is
+$g = L \sin\varphi_{max}$ = 30 × sin 5° = **2.61 mm**. The tab-bumper contact is
 frictionless with a stiff penalty. A small
 radial stabiliser spring (0.05 N/mm per petal) is reported separately.
 

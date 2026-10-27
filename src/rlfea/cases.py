@@ -153,6 +153,13 @@ def _pca_frame(skin: TriSurface, proximal_hint, anterior_hint, use_pca: bool = T
 # ---------------------------------------------------------------------------
 def build_case(cfg: dict, geo: dict) -> dict:
     mset = load_material_set(cfg["materials"]["set"])
+    # optional stiffness scaling of named materials (all stress-type parameters, incl. bulk modulus,
+    # so the bulk/shear ratio and the incompressibility are unchanged); recorded in the material set
+    from .materials.library import scaled as _scaled
+    for mkey, fac in (cfg["materials"].get("stiffness_scale") or {}).items():
+        if mkey not in mset["materials"]:
+            raise KeyError(f"materials.stiffness_scale: {mkey!r} not in set {mset['set_name']}")
+        mset = _scaled(mset, mkey, float(fac))
     L = cfg["layers"]
     lcfg = dict(skin_thickness=L["skin_thickness"], fat_thickness=L["fat_thickness"],
                 max_fraction_skin=L["max_fraction_skin"], max_fraction_fat=L["max_fraction_fat"],
