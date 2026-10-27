@@ -169,21 +169,23 @@ FAILED after 3 mm of the 10 mm (t = 1.3). Full table: [STANCE_CHECK_25lbf.md](ST
 
 ## 25 lbf stance, current model (run `lotus_v5_stance_25lbf`, 2026-10-26)
 
-Model: rigid petals on their hinges, each limited to **2° of inward rotation from its
-initial position** (hinge stop), **cup wall fixed** to the cup (it was an unconstrained
-body before), **tissue set v2** (muscle 9.5 kPa, fat 6.55 kPa, Ogden exponent 5), lace
-as a purely tangential force. Full table: [STANCE_CHECK_25lbf.md](STANCE_CHECK_25lbf.md).
+Model: rigid petals on their hinges, each limited to **5° of inward rotation from its
+initial position** (hinge stop), cup wall fixed to the cup, **tissue set v2 × 3**
+(muscle 28.5 kPa, fat 19.7 kPa, skin c = 0.60 MPa; team decision), lace as a purely
+tangential force. Full table: [STANCE_CHECK_25lbf.md](STANCE_CHECK_25lbf.md). The
+previous run (2° limit, tissue × 1: 694 N at 10 mm) is kept locally as
+`lotus_v5_stance_25lbf_2deg_x1`.
 
-**State: CONVERGED through tightening and the full 10 mm push.**
+**State: CONVERGED through tightening and the full 10 mm push. The 1.2 kN target is
+reached at 8.7 mm of push.**
 
-* The medial and posterior petals reach their stops at about 19 lbf (t = 0.75) and stay
-  at 2.1° (0.1° of penalty give). The anterior (0.7 to 1.2°) and lateral (up to 1.4°)
-  petals do not reach theirs. Without a limit the medial petal had turned 11 to 14°.
-* At 25 lbf: pads press on the skin with 439 N in total (anterior 123, medial 76,
-  posterior 84, lateral 156 N); peak pad pressure 148 kPa (was 478 kPa); minimum
-  volume ratio J 0.82 (was 0.62).
-* At the end of the 10 mm push: axial load **694 N** (58% of the 1.2 kN target), still
-  rising, slip area 36% (no gross slip). Petals 400 N (58%), cushion 87 N (12%),
-  **cup wall 207 N (30%)**. Peak pressure 220 kPa, minimum J 0.57.
-* The cushion alone is under the 15% limit, but cushion plus cup wall carry 42% of
-  the load and the petals 58%, below the 85% requirement.
+* No petal reaches the 5° stop: the largest rotation is 2.1° (medial, at about 19 lbf).
+* At 25 lbf: pads press on the skin with 738 N (anterior 121, medial 237, posterior
+  230, lateral 150 N); peak pad pressure 234 kPa; tissue minimum J 0.92.
+* At 1.2 kN (8.7 mm push): **cushion 13% (PASS, < 15%)**, petals 616 N (51%), cup wall
+  about 36%; peak pressure about 342 kPa; tissue minimum J 0.88. The lowest J overall
+  (0.44) is in the TPU lattice cushion, which is compressible by design.
+* At 10 mm: 1322 N, still rising, slip area 40%. Cushion 206 N (16%), cup wall 469 N
+  (35%), petals 647 N (49%), peak pressure 385 kPa.
+* Petals carry about half the load; the cup wall about a third. The 85% petal share is
+  not met.
