@@ -312,9 +312,11 @@ def _assemble(cfg, model, mset, traction_model=None):
                                       "joint to the cup along its own radial direction (penalty 1e4 N/mm, 1e7 N mm/rad).")
         rl = (S.get("cad") or {}).get("rotation_limit")
         if rl and S.get("petal_motion", "hinged") != "radial":
-            rep["assumptions"].append(f"Each rigid petal rotates about its hinge but may lean at most {rl.get('max_inward_deg', 2.0)} deg "
-                                      f"inward of {rl.get('measured_from', 'vertical')} (team, 2026-10-26): a rigid tab below the hinge "
-                                      "meets a stiff bumper on the cup (frictionless contact).")
+            ref = {"initial": "its initial (simulation start) position", "cad": "the CAD pose", "vertical": "vertical (lean)"}.get(
+                rl.get("measured_from", "initial"), rl.get("measured_from"))
+            rep["assumptions"].append(f"Each rigid petal rotates about its hinge by at most {rl.get('max_inward_deg', 2.0)} deg inward "
+                                      f"from {ref} (team, 2026-10-26): a rigid tab below the hinge meets a stiff bumper on the cup "
+                                      "(frictionless contact).")
         rep["assumptions"].append((f"Each petal hinge is a frictionless revolute joint (penalty 1e4 N/mm, 1e7 N mm/rad). " if S.get("petal_motion", "hinged") != "radial" else "") +
                                   f"A radial stabiliser spring k = {k_stab} N/mm per petal is NUMERICAL STABILISATION; "
                                   "its force and energy are reported.")

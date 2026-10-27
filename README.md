@@ -175,13 +175,11 @@ The derivation is in [docs/GRIP_ESTIMATE.md](docs/GRIP_ESTIMATE.md).
   published (`data/socket/` is git-ignored).
 * **Four petals:** anterior (carries the dial), medial, posterior, lateral.
   Petals are **rigid solids on frictionless hinges** (axis from each axle's
-  principal axis) that may **lean at most 2° inward of vertical** (team,
-  2026-10-26; `socket.cad.rotation_limit`). Each petal's lean is the slope of
-  its pad inner surface (radius vs height): anterior 9.6° outward, medial
-  0.7° inward, posterior 1.0° outward, lateral 5.6° outward, so the allowed
-  inward rotation is 11.6°, 1.3°, 3.0° and 7.6°. The limit is a hinge stop:
-  a rigid 30 mm tab below each hinge (part of the petal) meets a stiff bumper
-  fixed to the cup when the petal reaches 2° inward of vertical.
+  principal axis) that **rotate at most 2° inward from their initial
+  position** (the simulation start, after the snug fit; team, 2026-10-26;
+  `socket.cad.rotation_limit`). The limit is a hinge stop: a rigid 30 mm
+  tab below each hinge (part of the petal) meets a stiff bumper fixed to
+  the cup when the petal has turned 2° inward.
   Without the stop, the earlier runs turned the medial petal 11 to 14° and
   the lateral petal 2.5 to 5° inward at only 25 to 30 lbf, driving their top
   edges into the limb.
@@ -398,14 +396,11 @@ checked to be zero. In the tangential model the dropped components make the
 sum non-zero; that difference is carried by the joints.
 
 **Petal kinematics.** Each petal is a rigid body on a frictionless revolute
-joint (its hinge axle). Its lean from vertical is
-$\beta = \arctan(\mathrm{d}r/\mathrm{d}z)$, the median slope of the pad
-inner surface across the petal width (+ = top leans outward). The petal may
-rotate inward until $\beta = -2°$, i.e. by $\varphi_{rem} = \beta + 2°$.
-A rigid tab of length $L$ = 30 mm below the hinge swings outward by
-$\delta = L \sin\varphi$ as the petal rotates inward, and a stiff bumper
-on the cup sits at the gap $g \approx L \sin\varphi_{rem}$: 5.9 mm
-(anterior), 0.68 mm (medial), 1.56 mm (posterior), 3.9 mm (lateral). The tab-bumper contact is
+joint (its hinge axle). Inward rotation from the initial position is
+limited to $\varphi_{max}$ = 2° by a hinge stop: a rigid tab of length
+$L$ = 30 mm below the hinge swings outward by $\delta = L \sin\varphi$
+as the petal turns inward, and a stiff bumper on the cup sits at the gap
+$g = L \sin\varphi_{max}$ = 30 × sin 2° = **1.05 mm**. The tab-bumper contact is
 frictionless with a stiff penalty. A small
 radial stabiliser spring (0.05 N/mm per petal) is reported separately.
 

@@ -407,7 +407,11 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
                 # the petal may tilt inward until it is lim_deg past vertical
                 rem = max(lean + lim_deg, 0.0)
                 used = abs(np.degrees(ang0))
-            else:                                                            # legacy: lim_deg of rotation from the CAD pose
+            elif lim.get("measured_from") == "initial":
+                # lim_deg of inward rotation from the petal's initial (simulation start, snug-fit) position
+                used = abs(np.degrees(ang0))
+                rem = lim_deg
+            else:                                                            # "cad": lim_deg of rotation from the CAD pose
                 used = abs(np.degrees(ang0))
                 rem = max(lim_deg - used, 0.0)
             tab = np.array([[[o + r * er + s_ * ea + z * ez for z in (-L, 0.0)] for s_ in (-wdt / 2, wdt / 2)] for r in (-tt / 2, tt / 2)])
