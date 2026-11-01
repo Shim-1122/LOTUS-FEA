@@ -17,8 +17,10 @@ private/
 runs/
 verification_runs/
 
-# socket CAD (not published) and its tessellation cache
-data/socket/
+# socket CAD: data/socket/ is no longer ignored (owner request, 2026-11-01); the tessellation cache still is
 .tess_*.pkl
+!data/socket/
+!data/socket/*.step
+!data/socket/*.STEP
 !examples/synthetic/*.stl
 !data/limb/*.stl
