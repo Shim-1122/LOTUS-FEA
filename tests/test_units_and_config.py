@@ -40,3 +40,18 @@ def test_suction_requires_justification():
     raw["load_cases"]["suction"] = {"enabled": True, "pressure": {"value": 10, "unit": "kPa"}}
     with pytest.raises(C.ConfigError):
         C.resolve(raw)
+
+
+def test_applied_load_force_control():
+    raw = C.load("configs/synthetic_human.yaml")
+    raw["load_cases"]["pullout"] = {"enabled": False}
+    raw["load_cases"]["applied_load"] = {"enabled": True, "axial_force": {"value": 1.2, "unit": "kN"},
+                                         "moment_x": {"value": 61, "unit": "N*m"}}
+    with pytest.raises(C.ConfigError):          # a source is required
+        C.resolve(raw)
+    raw["load_cases"]["applied_load"]["source"] = "test"
+    cfg, _ = C.resolve(raw)
+    al = cfg["load_cases"]["applied_load"]
+    assert al["axial_force"] == pytest.approx(1200.0)
+    assert al["moment_x"] == pytest.approx(61000.0)     # N*mm internally
+    assert al["moment_y"] == 0.0
