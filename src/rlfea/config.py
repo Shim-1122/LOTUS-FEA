@@ -36,7 +36,8 @@ DEFAULTS = {
               "rating_fractions": [0.25, 0.5, 0.75, 1.0]},
     "load_cases": {"tightening": {"enabled": True}, "pullout": {"enabled": False},
                    "body_weight": {"enabled": False}, "bending": {"enabled": False},
-                   "torsion": {"enabled": False}, "suction": {"enabled": False}},
+                   "torsion": {"enabled": False}, "applied_load": {"enabled": False},
+                   "suction": {"enabled": False}},
 }
 
 
@@ -169,6 +170,14 @@ def resolve(raw: dict) -> tuple[dict, list[str]]:
     for k in ("bending", "torsion"):
         if lc[k].get("enabled"):
             lc[k]["rotation"] = quantity(lc[k]["rotation"], "angle")
+    if lc["applied_load"].get("enabled"):
+        al = lc["applied_load"]
+        if not al.get("source"):
+            raise ConfigError("applied_load requires 'source' (where the force/moment values come from)")
+        al["axial_force"] = quantity(al["axial_force"], "force")
+        for m in ("moment_x", "moment_y"):
+            al[m] = quantity(al[m], "moment") if al.get(m) is not None else 0.0
+        al.setdefault("label", "applied_load")
     if lc["suction"].get("enabled"):
         sc = lc["suction"]
         for req in ("pressure", "justification", "sealing_assumption"):
@@ -176,7 +185,7 @@ def resolve(raw: dict) -> tuple[dict, list[str]]:
                 raise ConfigError(f"suction enabled but '{req}' is missing; suction is only modelled with a justified "
                                   "pressure boundary condition and an explicit sealing assumption")
         sc["pressure"] = quantity(sc["pressure"], "stress")
-    if any(lc[k].get("enabled") for k in ("pullout", "body_weight", "bending", "torsion")) and not S.get("enabled"):
+    if any(lc[k].get("enabled") for k in ("pullout", "body_weight", "bending", "torsion", "applied_load")) and not S.get("enabled"):
         raise ConfigError("pullout/body-weight/bending/torsion require the socket model (they act through the socket)")
     return cfg, warn
 

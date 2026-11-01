@@ -455,14 +455,42 @@ def _assemble(cfg, model, mset, traction_model=None):
         st1.loads = rep.pop("_traction_loads")
     spec.steps.append(st1)
     lcs = cfg["load_cases"]
-    second = [k for k in ("pullout", "body_weight", "bending", "torsion") if lcs[k].get("enabled")]
+    second = [k for k in ("pullout", "body_weight", "bending", "torsion", "applied_load") if lcs[k].get("enabled")]
     if len(second) > 1:
-        raise ValueError("enable at most one of pullout/body_weight/bending/torsion per run")
+        raise ValueError("enable at most one of pullout/body_weight/bending/torsion/applied_load per run")
     if second:
         k = second[0]
         spec.load_curves[2] = {"name": k, "points": [(1.0, 0.0), (2.0, 1.0)]}
         st2 = StepSpec(k, 1.0, sol.get("n_steps_case2", sol["n_steps"]), [round(1.0 + 0.1 * i, 6) for i in range(1, 11)])
-        if k in ("pullout", "body_weight"):
+        if k == "applied_load":
+            # FORCE control: after tightening the cup is released axially (and about x/y when a
+            # moment is given) and a prescribed force/moment is ramped onto it.  The cup's
+            # resulting motion is the socket's response; divergence means the grip cannot
+            # hold the load (no load-displacement curve beyond that point).
+            al = lcs[k]
+            free = ["Rz"] + [d for d, m in (("Ru", "moment_x"), ("Rv", "moment_y")) if abs(al[m]) > 0]
+            for d in free[1:]:
+                for r in spec.rigid_bcs:
+                    if r.get("name") == "cup_lateral_rot":
+                        r["dofs"] = [x for x in r["dofs"] if x != d]
+                st1.rigid_bcs.append({"type": "rigid_fixed", "rb": "rigid_cup", "dofs": [d], "name": f"cup_{d}_hold"})
+            # FEBio TARGET load type: the load starts at the cup's constraint reaction at the end of
+            # tightening (so releasing the constraint does not jump the load) and is interpolated
+            # linearly over the step to the target; its value must not be scaled again by a ramp curve.
+            spec.load_curves[3] = {"name": "applied_load_constant", "points": [(0.0, 1.0), (2.0, 1.0)]}
+            st2.rigid_loads.append({"type": "rigid_force", "rb": "rigid_cup", "dof": "Rz", "value": float(al["axial_force"]),
+                                    "lc": 3, "load_type": 2, "name": "cup_applied_Fz"})
+            for d, m in (("Ru", "moment_x"), ("Rv", "moment_y")):
+                if abs(al[m]) > 0:
+                    st2.rigid_loads.append({"type": "rigid_moment", "rb": "rigid_cup", "dof": d, "value": float(al[m]),
+                                            "lc": 3, "load_type": 2, "name": f"cup_applied_{d}"})
+            rep["applied_load"] = {"label": al["label"], "axial_force_N": al["axial_force"],
+                                   "moment_x_Nmm": al["moment_x"], "moment_y_Nmm": al["moment_y"], "source": al["source"]}
+            rep["assumptions"].append(f"applied_load ({al['label']}): force-controlled cup load Fz = {al['axial_force']:.0f} N "
+                                      f"(+ = socket pushed proximally onto the limb), Mx = {al['moment_x'] / 1000:.1f} N m, "
+                                      f"My = {al['moment_y'] / 1000:.1f} N m about the cup centre of mass, ramped linearly "
+                                      f"over step 2 (quasi-static; no dynamics). Source: {al['source']}")
+        elif k in ("pullout", "body_weight"):
             d = lcs[k]["displacement"] * (-1 if k == "pullout" else 1)
             st2.rigid_bcs.append({"type": "rigid_displacement", "rb": "rigid_cup", "dof": "z", "value": d, "lc": 2,
                                   "relative": 1, "name": f"cup_{k}"})
@@ -475,7 +503,7 @@ def _assemble(cfg, model, mset, traction_model=None):
             rep["assumptions"].append(f"{k}: prescribed cup rotation about the cup centre of mass (not a gait load).")
         spec.steps.append(st2)
         # cup Rx,Ry,Ru,Rv,Rw remain fixed globally; for bending/torsion the rotated dof is released below
-        if k in ("bending", "torsion"):
+        if k in ("bending", "torsion") and k != "applied_load":
             dof = "Ru" if k == "bending" else "Rw"
             for r in spec.rigid_bcs:
                 if r.get("name") == "cup_lateral_rot":
