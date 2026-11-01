@@ -358,7 +358,7 @@ def _rigid_load(parent, r):
     _sub(e, "rb", r["rb"])
     _sub(e, "dof", r["dof"])
     _sub(e, "value", r["value"], lc=r["lc"])
-    if r["type"] == "rigid_force":
+    if r["type"] == "rigid_force" or "load_type" in r:
         _sub(e, "load_type", r.get("load_type", 0))
     _sub(e, "relative", 0)
 
