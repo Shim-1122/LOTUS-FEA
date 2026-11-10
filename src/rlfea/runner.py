@@ -328,6 +328,16 @@ def make_figures(run_path: str, exaggeration: float | None = 5.0) -> dict:
         idx["pullout"] = FG.xy_plot([{"x": [c[0] for c in cup], "y": [c[1] for c in cup], "label": "cup axial reaction Fz [N]"}],
                                     f"prescribed socket displacement ({'distal' if steps[1] == 'pullout' else 'proximal'}) [mm]", "force [N]",
                                     os.path.join(figdir, "pullout.png"), title=f"{steps[1]} | state {st.get('state')}")
+    if t2 and len(steps) > 1 and steps[1] == "applied_load":
+        # force control: FEBio logs the load acting on the cup (the reaction at the end of
+        # tightening, interpolated to the target over step 2) as the cup's rigid-body force
+        S1 = [x for x in S if x["time"] >= 1.0 - 1e-9]
+        cups = [s["equilibrium"]["rigid_bodies"].get("rigid_cup", {}) for s in S1]
+        z0 = cups[0].get("position", [0, 0, 0])[2] if cups else 0.0
+        idx["pullout"] = FG.xy_plot([{"x": [c.get("position", [0, 0, 0])[2] - z0 for c in cups],
+                                      "y": [c.get("F", [0, 0, 0])[2] for c in cups], "label": "cup axial load Fz [N]"}],
+                                    "cup axial displacement after tightening (+ proximal) [mm]", "force [N]",
+                                    os.path.join(figdir, "pullout.png"), title=f"applied_load | state {st.get('state')}")
     rel = {k: os.path.relpath(v, os.path.join(run_path, "report")) for k, v in idx.items()}
     P.dump(os.path.join(figdir, "index.json"), rel)
     return rel

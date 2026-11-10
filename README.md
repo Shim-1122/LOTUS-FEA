@@ -145,6 +145,8 @@ and the parameters of each test. Values marked *estimate* or
 | Design target | **1.2 kN** axial (1.3 × the stance peak, "a bit of headroom") | team requirement |
 | Distal end share | carries load, but **less than 15%** of it | team requirement |
 | Petal share | therefore at least 85% (at least 1.02 kN) | follows from the above |
+| Gait bending moment (sagittal) | 47 N m peak, 61 N m with 1.3× headroom | **estimate**: ~0.6 N m/kg × 78.1 kg, order of magnitude of measured transtibial socket reaction moments (Kobayashi et al. 2013 to 2016); not measured on this patient |
+| Gait bending moment (coronal) | 23 N m peak, 30 N m with 1.3× headroom | **estimate**: ~0.3 N m/kg × 78.1 kg, same basis; limb side unconfirmed, so the varus sign is assumed |
 
 The derivation is in [docs/GRIP_ESTIMATE.md](docs/GRIP_ESTIMATE.md).
 
@@ -256,6 +258,10 @@ The derivation is in [docs/GRIP_ESTIMATE.md](docs/GRIP_ESTIMATE.md).
 | `lotus_v5_stance_relief.yaml` | lace to 60 lbf | same 10 mm push | 9 / 6 mm | the same, with the approximate fibular relief |
 | `lotus_v5_stance_25lbf.yaml` | lace to 25 lbf | same 10 mm push | 9 / 6 mm | grip per lbf of lace (scaling) |
 | `lotus_v5_socket.yaml` | lace to 60 lbf | 2 mm pull-out | 9 / 6 mm | swing pull-out check |
+| `lotus_v5_stance_force.yaml` | lace to 60 lbf | **force control**: 1.2 kN axial (1.3 × 923 N) | 9 / 6 mm | holds the walking stance target? petal ≥ 85%, distal < 15% |
+| `lotus_v5_gait_moment.yaml` | lace to 60 lbf | force control: 1.2 kN axial + 61 N m sagittal + 30 N m coronal moment | 9 / 6 mm | stance with the gait bending moment |
+| `lotus_v5_sit_to_stand.yaml` | lace to 60 lbf | force control: 610 N axial (1.3 × 470 N) | 9 / 6 mm | sit-to-stand |
+| `lotus_v5_swing_pullout.yaml` | lace to 60 lbf | force control: 44 N distal pull (1.3 × 34 N) | 9 / 6 mm | swing pull-out |
 
 `scripts/stance_check.py RUN_DIR` reads a stance run and reports, against
 the requirements:
@@ -263,11 +269,25 @@ the requirements:
 * whether the socket carries **1.2 kN** axially before the run ends, and
   after how much push;
 * the **distal share** of the axial load at 1.2 kN (pass if below 15%);
-* the petal load, slip area fraction, peak contact pressure and minimum
+* the **petal share** at the target (pass if at least 85%; load taken by the
+  cup wall counts against the petals);
+* the slip area fraction, peak contact pressure and minimum
   volume ratio J (tissue inversion check).
 
-Displacement control is used instead of force control so that a socket
-that slips still yields a load-displacement curve and the slip load.
+For force-controlled runs (`load_cases.applied_load`) the target is the
+applied axial force, and the table also gives how far the cup moved.
+
+Two kinds of step 2 are used. Displacement control (`body_weight`) still
+yields a load-displacement curve and the slip load when the socket slips.
+Force control (`applied_load`) applies the actual load case: after
+tightening, the cup is released axially (and about x and y when a moment is
+given), and FEBio's TARGET load type ramps the load from the cup's
+constraint reaction at the end of tightening to the target, so releasing the
+constraint does not make the load jump. If the grip cannot hold the load,
+the solve stops before t = 2, and the last converged load is a lower bound.
+The path was checked on the synthetic limb (60 N + 1 N m + 0.5 N m):
+converged, the logged cup load and moments end exactly at the targets, and
+force imbalance is below 1e-3.
 
 ### Muscle incompressibility check
 
