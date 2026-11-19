@@ -222,6 +222,28 @@ def _cad_lace_route(parts, petals, names, closing, rep):
     return route
 
 
+def _folded_cells(th, Z, R_in, R_mid):
+    """(nt-1, nz-1) mask of pad cells whose corner Jacobian is not positive (inverted or degenerate)."""
+    nt, nz = R_in.shape
+    def xyz(R):
+        return np.stack([R * np.cos(th)[:, None], R * np.sin(th)[:, None], np.broadcast_to(Z, (nt, nz))], -1)
+    A, B = xyz(R_in), xyz(R_mid)
+    bad = np.zeros((nt - 1, nz - 1), bool)
+    sgn = np.zeros((nt - 1, nz - 1))
+    for a in range(nt - 1):
+        for b in range(nz - 1):
+            c = [A[a, b], A[a + 1, b], A[a + 1, b + 1], A[a, b + 1], B[a, b], B[a + 1, b], B[a + 1, b + 1], B[a, b + 1]]
+            # corner jacobians of the hex at its 8 corners
+            nb = {0: (1, 3, 4), 1: (2, 0, 5), 2: (3, 1, 6), 3: (0, 2, 7), 4: (7, 5, 0), 5: (4, 6, 1), 6: (5, 7, 2), 7: (6, 4, 3)}
+            dets = [np.dot(np.cross(c[i] - c[k], c[j] - c[k]), c[l] - c[k]) for k, (i, j, l) in nb.items()]
+            dets = np.array(dets)
+            if not ((dets > 0).all() or (dets < 0).all()):
+                bad[a, b] = True
+            sgn[a, b] = np.sign(dets.sum())
+    major = np.sign(sgn[~bad].sum()) if (~bad).any() else 1.0
+    return bad | (sgn != major)
+
+
 def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: dict) -> tuple[FEModel, dict]:
     """parts: CAD tessellation already in the model frame.  cfg as for the
     parametric socket, plus cad.petals = [names], cad.cap_height (mm)."""
@@ -267,6 +289,21 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
                 if thin[:, 0].any() or thin[:, -1].any():
                     zlo += 1.0 if thin[:, 0].any() else 0.0
                     zhi -= 1.0 if thin[:, -1].any() else 0.0
+                    continue
+                # every pad cell must start valid: a fine grid can sample the rounded pad lip, where the
+                # inner surface curls over and a cell comes out folded; trim the offending edge row/column
+                Ri = np.array([[H[j][k][0] for j in range(nz)] for k in range(nt)])
+                Rm = np.array([[H[j][k][1] for j in range(nz)] for k in range(nt)])
+                bad_c = _folded_cells(th, Z, Ri, Rm)
+                if bad_c.any():
+                    kk, jj = np.nonzero(bad_c)
+                    moved = False
+                    if (jj >= nz - 3).any(): zhi -= 1.0; moved = True
+                    if (jj <= 1).any(): zlo += 1.0; moved = True
+                    if (kk <= 1).any(): lo += 1.0; moved = True
+                    if (kk >= nt - 3).any(): hi -= 1.0; moved = True
+                    if not moved:
+                        raise RuntimeError(f"{pn}: folded pad cells inside the grid; use a coarser pad_element_size")
                     continue
                 break
             bad = ~ok                                   # (nt, nz)
@@ -372,7 +409,8 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
             lever = np.linalg.norm(np.cross(X[ids] - p.hinge_origin, p.hinge_axis), axis=1)
             need = (clear + float(snug.get("interference", 0.1))) / np.maximum(lever, 1e-6)
             ang = sgn * float(np.percentile(need, float(snug.get("percentile", 20.0))))
-            allp = np.unique(np.concatenate([p.pad_nodes.ravel(), p.pad_outer_nodes.ravel(), p.shell_outer_nodes.ravel()]))
+            # every node of this petal's pad and shell blocks (includes intermediate pad layers)
+            allp = np.unique(np.concatenate([b.conn.ravel() for b in model.blocks if b.name in (f"{p.name}_pad", f"{p.name}_shell")]))
             model.nodes[allp] = _rotate_about(X[allp], p.hinge_origin, p.hinge_axis, ang)
             p.com = _rotate_about(p.com[None], p.hinge_origin, p.hinge_axis, ang)[0]
             closing[p.name] = (p.hinge_origin, p.hinge_axis, ang)
