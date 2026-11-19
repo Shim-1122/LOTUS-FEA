@@ -195,6 +195,10 @@ The derivation is in [docs/GRIP_ESTIMATE.md](docs/GRIP_ESTIMATE.md).
   each pad's back face shares nodes with its rigid petal shell, so the pad
   can only compress through its thickness (and bulge at its free edges); it
   cannot stretch or slide relative to the petal.
+* **Pad edges:** where a pad tapers below 2 mm thick at its sides or ends, the
+  modelled pad is trimmed back (`socket.cad.pad_min_thickness_mm`, default 2.0).
+  On the coarse mesh the tapered edge became sliver elements about 1 mm thick
+  and 8 to 9 mm across, which folded and stopped the 60 lbf stance run.
 * **Distal cup** wall from the CAD cavity (rigid); any cup point that started
   inside the skin is moved out to 0.1 mm clearance.
 * **Distal cushion** (not in the CAD): a parametric 6 mm layer under the

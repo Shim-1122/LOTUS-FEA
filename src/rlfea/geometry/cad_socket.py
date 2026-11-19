@@ -229,6 +229,7 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
     h = float(cfg.get("element_size", 8.0))
     ts = float(cfg.get("shell_thickness", 4.0))
     margin_deg = float(cad.get("edge_margin_deg", 1.0))
+    tmin_pad = float(cad.get("pad_min_thickness_mm", 2.0))
     rep = {"status": f"socket from CAD {os.path.basename(parts['_meta']['source'])} (tentative; see notes)",
            "cad_sha256": parts["_meta"]["sha256"], "tessellation_mm": parts["_meta"]["size_mm"], "petals": {}}
     petals: list[Petal] = []
@@ -253,6 +254,19 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
             H = [_ray_hits(pad, z, th) for z in Z]
             ok = np.array([[len(H[j][k]) >= 2 for j in range(nz)] for k in range(nt)])
             if ok.all():
+                # also trim the pad's tapered edges: a column or row thinner than pad_min_thickness_mm
+                # becomes a sliver element (about 1 mm x 8 mm x 9 mm on the coarse mesh) that folds under
+                # shear; it inverted in the 60 lbf stance run (posterior pad edge)
+                tk = np.array([[H[j][k][1] - H[j][k][0] for j in range(nz)] for k in range(nt)])
+                thin = tk < tmin_pad
+                if thin[0].any() or thin[-1].any():
+                    lo += 1.0 if thin[0].any() else 0.0
+                    hi -= 1.0 if thin[-1].any() else 0.0
+                    continue
+                if thin[:, 0].any() or thin[:, -1].any():
+                    zlo += 1.0 if thin[:, 0].any() else 0.0
+                    zhi -= 1.0 if thin[:, -1].any() else 0.0
+                    continue
                 break
             bad = ~ok                                   # (nt, nz)
             inner = bad[1:-1, 1:-1]
