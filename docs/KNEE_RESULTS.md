@@ -189,3 +189,23 @@ reached at 8.7 mm of push.**
   (35%), petals 647 N (49%), peak pressure 385 kPa.
 * Petals carry about half the load; the cup wall about a third. The 85% petal share is
   not met.
+
+## 60 lbf stance (run `lotus_v5_stance_60lbf_disp`, 2026-11-18)
+
+Model as the 25 lbf run (tissue v2 × 3, petals limited to 5° from their initial
+position, coarse 9 / 6 mm mesh), lace 60 lbf. 5 h budget with automatic resume. Full
+table: [STANCE_CHECK_60lbf.md](STANCE_CHECK_60lbf.md).
+
+**State: FAILED at t = 1.79 (7.9 mm of the 10 mm push) after 27 min: 7 negative
+Jacobians. Not a timeout.**
+
+* **1.2 kN target reached at 6.7 mm of push.** Distal (cushion) share 12% (PASS);
+  petals 639 N, 53% (FAIL against 85%); cup wall 419 N (35%).
+* At 60 lbf before the push: peak pad pressure 478 kPa, axial preload 203 N.
+* At the target: peak pressure about 780 kPa; tissue minimum J 0.76 (muscle, lateral,
+  z 146 mm); the medial petal has turned 4.5° (5° stop), the posterior 2.8°.
+* The most compressed elements are in the **distal TPU cushion** (J 0.46 at t = 1.7,
+  centre of the distal end), and they are the likely elements that inverted. The
+  cushion is homogenised as a compressible neo-Hookean solid, which does not stiffen
+  as the gyroid lattice densifies, so it collapses under the distal load.
+
