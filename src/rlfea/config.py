@@ -30,7 +30,7 @@ DEFAULTS = {
                 "bonded": False},
     "solver": {"backend": "febio", "dtol": 0.01, "etol": 0.001, "rtol": 0.001, "lstol": 0.9, "max_refs": 50,
                "qn_method": "auto", "max_ups": 10, "n_steps": 20, "dtmin": 1e-5, "max_retries": 10, "opt_iter": 10,
-               "threads": None, "timeout_s": None},
+               "threads": None, "timeout_s": 18000},   # 5 h total solve budget per run (resumes included)
     "cable": {"guide_friction": 0.0, "route_height_fraction": 0.75, "guide_inset": {"value": 4.0, "unit": "deg"},
               "dial_petal": 0, "tension_is_example": True, "rated_tension": None,
               "rating_fractions": [0.25, 0.5, 0.75, 1.0]},

@@ -109,6 +109,11 @@ def execute(rd: P.RunDir, threads: int | None = None, timeout: float | None = No
             "restart_file": os.path.basename(restart), "overrides": overrides,
             "previous_status": P.read_status(rd.path), "time": time.strftime("%Y-%m-%dT%H:%M:%S%z")})
         P.dump(rd.p("manifest.json"), man)
+    cfg = json.load(open(rd.p("config.resolved.json")))
+    if threads is None:
+        threads = (cfg.get("solver") or {}).get("threads")
+    if timeout is None:
+        timeout = (cfg.get("solver") or {}).get("timeout_s")
     rd.set_status("running")
     try:
         res = FB.run_febio(rd.p("solver", "model.feb"), rd.p("solver"), threads=threads, timeout=timeout, restart=restart)
@@ -341,3 +346,28 @@ def make_figures(run_path: str, exaggeration: float | None = 5.0) -> dict:
     rel = {k: os.path.relpath(v, os.path.join(run_path, "report")) for k, v in idx.items()}
     P.dump(os.path.join(figdir, "index.json"), rel)
     return rel
+
+
+def execute_with_resume(rd: P.RunDir, threads: int | None = None, budget_s: float | None = None,
+                        restart: str | None = None, overrides: dict | None = None, max_attempts: int = 20) -> dict:
+    """Run FEBio and, whenever it is stopped (timeout or a killed process) rather than failed,
+    resume it from the last converged step (solver/model.dmp) until it converges, fails, or the
+    total wall-clock budget (default: config solver.timeout_s, 5 h) is used up. A run cut off by
+    the clock therefore loses nothing."""
+    cfg = json.load(open(rd.p("config.resolved.json")))
+    if budget_s is None:
+        budget_s = (cfg.get("solver") or {}).get("timeout_s") or 18000
+    t0 = time.time()
+    dump = rd.p("solver", "model.dmp")
+    res = None
+    for attempt in range(max_attempts):
+        left = budget_s - (time.time() - t0)
+        if left <= 60:
+            break
+        if attempt == 0 and restart is None and P.read_status(rd.path).get("state") == "interrupted" and os.path.exists(dump):
+            restart = dump                                   # resuming a run that an earlier process left interrupted
+        res = execute(rd, threads=threads, timeout=left, restart=restart, overrides=overrides if attempt == 0 else None)
+        if res["status"] != "interrupted" or not os.path.exists(dump):
+            break
+        restart = dump
+    return res

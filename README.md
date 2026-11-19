@@ -313,6 +313,21 @@ incompressible setting that tissue has to move aside instead of
 compacting. The stance runs are being repeated with this setting; runs
 made before the change are kept with the suffix `_k100`.
 
+## Long runs: time budget and automatic resume
+
+* Every solve has a **5-hour wall-clock budget** by default (`solver.timeout_s: 18000`;
+  override with `--timeout SECONDS`).
+* `rlfea run` and `rlfea solve` **resume automatically**: if FEBio is stopped by the
+  budget or a killed process (not by a convergence failure), the run continues from its
+  last converged step (`solver/model.dmp`) until it converges, fails, or the 5 hours are
+  used up. Nothing already solved is lost. `--no-resume` turns this off.
+* A run left interrupted by a dead process resumes with
+  `rlfea solve runs/<run> --restart runs/<run>/solver/model.dmp`.
+* Restart needs the patched FEBio build (`scripts/build_febio.sh`); stock FEBio 4.13
+  crashes when resuming models with rigid bodies.
+* `--threads N` sets FEBio's thread count (default: all cores). The time is spent
+  inside FEBio's compiled solver, so the Python layer is not the bottleneck.
+
 ## Mathematical model
 
 Every calculation the LOTUS V5 runs and the Gait Tester rely on, with the

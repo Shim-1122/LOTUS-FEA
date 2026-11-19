@@ -160,6 +160,7 @@ load_cases:
       unit: mm
 solver:
   n_steps: 100
+  timeout_s: 18000          # 5 h total solve budget; a timed-out run resumes from its last converged step
   max_retries: 10
   max_ups: 0
   etol: 0.01   # FEBio default; 1e-3 stalled on a friction stick-slip 2-cycle at t=0.645 (run supplied_limb_T75_newton)

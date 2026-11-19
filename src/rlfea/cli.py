@@ -34,8 +34,11 @@ def main(argv=None):
     a = sub.add_parser("audit"); a.add_argument("paths", nargs="+"); a.add_argument("--unit"); a.add_argument("--out")
     for name in ("prepare", "run"):
         p = sub.add_parser(name); p.add_argument("config"); p.add_argument("--runs", default="runs"); p.add_argument("--id")
-        p.add_argument("--threads", type=int); p.add_argument("--timeout", type=float)
+        p.add_argument("--threads", type=int); p.add_argument("--timeout", type=float, help="total solve budget in s (default: config solver.timeout_s = 5 h)")
+        p.add_argument("--no-resume", action="store_true", help="do not resume automatically after a timeout")
     s = sub.add_parser("solve"); s.add_argument("run_dir"); s.add_argument("--restart"); s.add_argument("--threads", type=int)
+    s.add_argument("--timeout", type=float, help="total solve budget in s (default: config solver.timeout_s = 5 h)")
+    s.add_argument("--no-resume", action="store_true", help="do not resume automatically after a timeout")
     s.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
                    help="restart override, e.g. etol=0.01 or max_retries=10 (recorded in the manifest)")
     sub.add_parser("post").add_argument("run_dir")
@@ -63,7 +66,8 @@ def main(argv=None):
         rd = runner.prepare(args.config, args.runs, args.id)
         print("prepared:", rd.path)
         if args.cmd == "run":
-            res = runner.execute(rd, threads=args.threads, timeout=args.timeout)
+            res = (runner.execute(rd, threads=args.threads, timeout=args.timeout) if args.no_resume
+                   else runner.execute_with_resume(rd, threads=args.threads, budget_s=args.timeout))
             print("solver status:", res["status"], "last converged time:", res["convergence"].get("last_converged_time"))
             _post(rd.path)
             if res["status"] != "converged":
@@ -77,7 +81,8 @@ def main(argv=None):
             ov[k] = float(v) if any(c in v for c in ".e") else int(v)
         if ov and not args.restart:
             sys.exit("--set is only supported together with --restart")
-        res = runner.execute(rd, threads=args.threads, restart=args.restart, overrides=ov)
+        res = (runner.execute(rd, threads=args.threads, timeout=args.timeout, restart=args.restart, overrides=ov) if args.no_resume
+               else runner.execute_with_resume(rd, threads=args.threads, budget_s=args.timeout, restart=args.restart, overrides=ov))
         print(res["status"], "last converged time:", res["convergence"].get("last_converged_time"))
         _post(rd.path)
     elif args.cmd == "post":
