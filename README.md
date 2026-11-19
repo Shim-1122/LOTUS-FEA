@@ -239,8 +239,11 @@ The derivation is in [docs/GRIP_ESTIMATE.md](docs/GRIP_ESTIMATE.md).
 * Silicone pad: neo-Hookean, shear modulus 23.3 kPa (median of silicone-gel
   liners, Sanders 2004), near-incompressible (k = 100 × shear).
 * Distal cushion: 85A TPU, 2 walls plus 8% gyroid infill, homogenised as a
-  compressible neo-Hookean solid, E = 71 kPa (range 36 to 252 kPa),
-  Poisson ratio 0.3.
+  compressible foam (FEBio "Ogden unconstrained"): small-strain E = 71 kPa
+  (range 36 to 252 kPa), Poisson ratio 0.3, and an exponent of −2 so it
+  stiffens as the lattice densifies (about 2× at 40% strain, 7× at 70%,
+  relative to a neo-Hookean solid). The earlier neo-Hookean cushion kept
+  squashing at constant stiffness and inverted in the 60 lbf run.
 
 ### Contact and solver
 
@@ -508,6 +511,18 @@ $$E^* = C\,E_s\,(\rho^*)^n = 1 \times 11.1 \times 0.08^2 = \mathbf{71\ kPa}$$
 
 Range: $n$ = 1.5 gives 252 kPa; $C$ = 0.5 gives 36 kPa. Poisson ratio 0.3
 (compressible lattice).
+
+**Large-strain cushion (foam form).** FEBio's compressible Ogden,
+
+$$W = \frac{c_1}{m_1^2}\left(\lambda_1^{m_1} + \lambda_2^{m_1} + \lambda_3^{m_1} - 3 - m_1 \ln J\right) + \frac{c_p}{2}(J - 1)^2$$
+
+has small-strain shear modulus $\mu = c_1/2$ and Lamé constant $\lambda = c_p$.
+For $E^*$ = 71 kPa and ν = 0.3: $\mu = E/(2(1+\nu))$ = 27.3 kPa, so
+$c_1$ = 54.6 kPa, and $c_p = E\nu/((1+\nu)(1-2\nu))$ = 41.0 kPa. With
+$m_1 = -2$, $\lambda^{m_1}$ grows without bound as a stretch goes to zero,
+so the cushion stiffens as it densifies and cannot invert. Single-element
+uniaxial check: 13, 35, 78, 186 and 597 kPa at 14, 28, 42, 56 and 70% strain
+(neo-Hookean: 10, 22, 35, 54, 87 kPa).
 
 **Bone.** Rigid in the LOTUS V5 runs (E = 17 GPa, ν = 0.3 when deformable).
 

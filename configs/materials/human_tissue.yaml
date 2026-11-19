@@ -48,6 +48,10 @@ references:
     citation: "Approximation (team requirement, 2026-10-26): skeletal muscle is mostly water and is treated as incompressible, so its volume must not change under compression while it still deforms in shape. Enforced by a penalty bulk modulus of 1000 x the Sengeh 2016 shear modulus on UT4 (nodally integrated) tetrahedra; FEBio 4.13 offers no augmented-Lagrangian incompressibility option for the uncoupled Ogden material."
     doi: null
     kind: approximation
+  LatticeDensificationApprox:
+    citation: "Approximation (2026-11-18): Ogden exponent m = -2 makes the homogenised gyroid cushion stiffen as it densifies. Low-density lattices compress at roughly constant stress, then stiffen sharply at large strain (Gibson & Ashby, Cellular Solids, 1997); the exponent is chosen, not fitted to this print."
+    doi: null
+    kind: approximation
   PriorPackageAssumption:
     citation: "Supplied handoff package 03_Previous_Tissue_Analysis (silicone mu = 100 kPa listed as an assumed material; no measurement)."
     doi: null
@@ -117,15 +121,16 @@ materials:
     uncertainty:
       c1: [0.00965, 0.02643]
   distal_cushion:
-    model: neo_Hookean_compressible
-    febio_type: "neo-Hookean"
+    model: Ogden_unconstrained_foam
+    febio_type: "Ogden unconstrained"
     region: "socket distal cushion: 85A TPU printed with 2 walls and 8% gyroid infill (homogenised)"
     parameters:
-      E: {value: 0.071, unit: MPa, source: GyroidHomogenisationApprox, note: "E* = Es (rho*)^2 with Es = 6 (c1 + c2) = 11.1 MPa (small-strain Young's modulus of the NinjaFlex 85A fit, c1 = 0.385, c2 = 1.47 MPa, Reppel & Weinberg 2018) and rho* = 0.08 (gyroid infill)."}
-      v: {value: 0.3,   unit: "-",  source: GyroidHomogenisationApprox, note: "a sparse lattice is compressible (it is NOT near-incompressible like solid TPU); typical foam Poisson ratio"}
-    calibration_range: "NONE for this print. Small-strain estimate only: a gyroid lattice in compression is linear, then plateaus, then densifies at large strain, which neo-Hookean does not capture. The 2 walls (perimeters) are not resolved; under through-thickness compression they act in series with the core and add little, but they stiffen the edges. Compress a printed cushion to calibrate."
+      c1: {value: 0.0546, unit: MPa, source: GyroidHomogenisationApprox, note: "c1 = 2 mu with mu = E*/(2(1+nu)) = 27.3 kPa, E* = 71 kPa: same small-strain stiffness as before (E* = Es rho*^2, Es = 11.1 MPa NinjaFlex 85A, rho* = 0.08)"}
+      m1: {value: -2.0,   unit: "-",  source: LatticeDensificationApprox, note: "negative exponent: the cushion stiffens steeply in compression as the lattice cells close (about 2x at 40% strain, 3.4x at 56%, 7x at 70% vs a neo-Hookean solid), so it cannot collapse or invert"}
+      cp: {value: 0.04096, unit: MPa, source: GyroidHomogenisationApprox, note: "Lame lambda for nu = 0.3 (compressible lattice)"}
+    calibration_range: "NONE for this print. Small-strain stiffness from Gibson-Ashby scaling; the large-strain stiffening (densification) is an assumed exponent, chosen so stiffening starts near 40-50% strain. Replaced the compressible neo-Hookean (2026-11-18), which kept squashing at constant stiffness and inverted in the 60 lbf stance run. Compress a printed cushion to calibrate."
     uncertainty:
-      E: [0.036, 0.252]
+      c1: [0.0277, 0.194]
   petal_stop:
     model: neo_Hookean_compressible
     febio_type: "neo-Hookean"

@@ -19,6 +19,7 @@ implemented by FEBio 4.13 (verified against FEBioMech source):
 * "Mooney-Rivlin" (uncoupled)
       W = c1 (I1~ - 3) + c2 (I2~ - 3) + k/2 (ln J)^2
 * "neo-Hookean" (compressible, E, v)
+* "Ogden unconstrained" (compressible; foams and lattices that stiffen as they densify)
       W = mu/2 (I1 - 3) - mu ln J + lambda/2 (ln J)^2
 * "trans iso Mooney-Rivlin" (uncoupled; passive fibre, optional)
 * "rigid body"
@@ -38,6 +39,7 @@ ALLOWED = {
               "m3": "dimensionless", "k": "stress"},
     "Mooney-Rivlin": {"c1": "stress", "c2": "stress", "k": "stress"},
     "neo-Hookean": {"E": "stress", "v": "dimensionless"},
+    "Ogden unconstrained": {"c1": "stress", "m1": "dimensionless", "c2": "stress", "m2": "dimensionless", "cp": "stress"},
     "trans iso Mooney-Rivlin": {"c1": "stress", "c2": "stress", "c3": "stress", "c4": "dimensionless",
                                 "c5": "stress", "lam_max": "dimensionless", "k": "stress"},
 }
@@ -121,6 +123,10 @@ def small_strain_moduli(mat: dict) -> dict:
         return {"mu0": mu, "K": p["k"]}
     if t == "Mooney-Rivlin":
         return {"mu0": 2 * (p["c1"] + p["c2"]), "K": p["k"]}
+    if t == "Ogden unconstrained":
+        # W = sum c_i/m_i^2 (l1^m + l2^m + l3^m - 3 - m ln J) + cp/2 (J-1)^2  ->  mu0 = sum(c_i)/2, Lame lambda = cp
+        mu = 0.5 * sum(p.get(f"c{i}", 0.0) for i in (1, 2))
+        return {"mu0": mu, "K": p["cp"] + 2 * mu / 3}
     if t == "neo-Hookean":
         E, v = p["E"], p["v"]
         return {"mu0": E / (2 * (1 + v)), "K": E / (3 * (1 - 2 * v))}
