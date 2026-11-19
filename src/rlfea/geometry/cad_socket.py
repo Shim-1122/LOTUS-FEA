@@ -226,7 +226,8 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
     """parts: CAD tessellation already in the model frame.  cfg as for the
     parametric socket, plus cad.petals = [names], cad.cap_height (mm)."""
     cad = cfg["cad"]
-    h = float(cfg.get("element_size", 8.0))
+    h = float(cad.get("pad_element_size", cfg.get("element_size", 8.0)))     # in-plane pad/petal element size
+    pad_layers = max(1, int(cad.get("pad_layers", 1)))                         # pad elements through the thickness
     ts = float(cfg.get("shell_thickness", 4.0))
     margin_deg = float(cad.get("edge_margin_deg", 1.0))
     tmin_pad = float(cad.get("pad_min_thickness_mm", 2.0))
@@ -319,7 +320,14 @@ def build_socket_from_cad(model: FEModel, skin: TriSurface, cfg: dict, parts: di
                              for a in range(nt - 1) for b in range(nz - 1)])
 
         name = f"petal{i + 1}"
-        padc, shell = hexes(ids_in, ids_mid), hexes(ids_mid, ids_out)
+        # pad: pad_layers elements through its thickness (intermediate node layers between inner and backing faces)
+        layers = [ids_in]
+        for q in range(1, pad_layers):
+            f_ = q / pad_layers
+            layers.append(model.add_nodes((base + (R_in + f_ * (R_mid - R_in))[..., None] * er).reshape(-1, 3)).reshape(nt, nz))
+        layers.append(ids_mid)
+        padc = np.vstack([hexes(layers[q], layers[q + 1]) for q in range(pad_layers)])
+        shell = hexes(ids_mid, ids_out)
         model.blocks.append(ElementBlock(f"{name}_pad", "hex8", padc, "silicone_pad", f"socket:{pn} petal:silicone pad (CAD)", "three-field"))
         model.blocks.append(ElementBlock(f"{name}_shell", "hex8", shell, f"rigid_{name}", f"socket:{pn} petal:rigid petal (CAD)", "rigid"))
         quads = np.array([[ids_in[a, b], ids_in[a, b + 1], ids_in[a + 1, b + 1], ids_in[a + 1, b]]

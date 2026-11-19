@@ -91,6 +91,8 @@ socket:
     cap_height: 8.0          # distal skin cap (mm above the apex) that rests on the cushion
     distal_cushion: true
     edge_margin_deg: 1.0
+    pad_element_size: 4.0  # finer in-plane pad mesh (was the 9 mm socket size); pad corners folded at 60 lbf
+    pad_layers: 2          # two silicone elements through the pad thickness
     rotation_limit:          # rigid petals rotate on their hinges at most 5 deg inward from their INITIAL position (team, 2026-10-26)
       max_inward_deg: 5.0    # team, 2026-10-26 (was 2.0)
       measured_from: initial   # simulation start (snug-fit pose); options: initial | cad | vertical

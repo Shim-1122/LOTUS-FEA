@@ -195,6 +195,10 @@ The derivation is in [docs/GRIP_ESTIMATE.md](docs/GRIP_ESTIMATE.md).
   each pad's back face shares nodes with its rigid petal shell, so the pad
   can only compress through its thickness (and bulge at its free edges); it
   cannot stretch or slide relative to the petal.
+* **Pad mesh:** `socket.cad.pad_element_size` sets the in-plane size of the pad and
+  petal elements and `socket.cad.pad_layers` the number of silicone elements
+  through the pad thickness. The 60 lbf stance config uses 4 mm and 2 layers:
+  with one coarse layer, pad corners folded where the pad presses on bone edges.
 * **Pad edges:** where a pad tapers below 2 mm thick at its sides or ends, the
   modelled pad is trimmed back (`socket.cad.pad_min_thickness_mm`, default 2.0).
   On the coarse mesh the tapered edge became sliver elements about 1 mm thick
